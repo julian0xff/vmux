@@ -115,6 +115,16 @@
 				<string>public.data</string>
 			</array>
 		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.cmux.sidebar-folder-drag</string>
+			<key>UTTypeDescription</key>
+			<string>cmux Sidebar Folder Drag</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+		</dict>
 	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>

@@ -161,7 +161,7 @@ struct cmuxApp: App {
             abs(lhs - rhs) <= tolerance
         }
 
-        let material = defaults.string(forKey: "sidebarMaterial") ?? SidebarMaterialOption.sidebar.rawValue
+        let material = defaults.string(forKey: "sidebarMaterial") ?? SidebarMaterialOption.matchTerminal.rawValue
         let blendMode = defaults.string(forKey: "sidebarBlendMode") ?? SidebarBlendModeOption.behindWindow.rawValue
         let state = defaults.string(forKey: "sidebarState") ?? SidebarStateOption.followWindow.rawValue
         let tintHex = defaults.string(forKey: "sidebarTintHex") ?? "#101010"
@@ -179,7 +179,7 @@ struct cmuxApp: App {
             approximatelyEqual(cornerRadius, 0.0)
 
         if usesLegacyDefaults {
-            let preset = SidebarPresetOption.nativeSidebar
+            let preset = SidebarPresetOption.matchTerminal
             defaults.set(preset.rawValue, forKey: "sidebarPreset")
             defaults.set(preset.material.rawValue, forKey: "sidebarMaterial")
             defaults.set(preset.blendMode.rawValue, forKey: "sidebarBlendMode")
@@ -496,12 +496,10 @@ struct cmuxApp: App {
                     Button(String(localized: "menu.find.findNext", defaultValue: "Find Next")) {
                         activeTabManager.findNext()
                     }
-                    .keyboardShortcut("g", modifiers: .command)
 
                     Button(String(localized: "menu.find.findPrevious", defaultValue: "Find Previous")) {
                         activeTabManager.findPrevious()
                     }
-                    .keyboardShortcut("g", modifiers: [.command, .shift])
 
                     Divider()
 
@@ -853,11 +851,8 @@ struct cmuxApp: App {
     }
 
     private func moveSelectedWorkspace(in manager: TabManager, by delta: Int) {
-        guard let workspace = manager.selectedWorkspace,
-              let currentIndex = selectedWorkspaceIndex(in: manager, workspaceId: workspace.id) else { return }
-        let targetIndex = currentIndex + delta
-        guard targetIndex >= 0, targetIndex < manager.tabs.count else { return }
-        _ = manager.reorderWorkspace(tabId: workspace.id, toIndex: targetIndex)
+        guard let workspace = manager.selectedWorkspace else { return }
+        _ = manager.moveWorkspaceInSidebarOrder(workspace.id, by: delta)
         manager.selectWorkspace(workspace)
     }
 
@@ -875,6 +870,13 @@ struct cmuxApp: App {
     private func moveSelectedWorkspaceToNewWindow(in manager: TabManager) {
         guard let workspace = manager.selectedWorkspace else { return }
         _ = AppDelegate.shared?.moveWorkspaceToNewWindow(workspaceId: workspace.id, focus: true)
+    }
+
+    private func groupSelectedWorkspacesIntoFolder(in manager: TabManager) {
+        let ids = manager.effectiveSidebarSelectionItemIds()
+        guard !ids.isEmpty else { return }
+        let folderName = String(localized: "folder.defaultName", defaultValue: "New Folder")
+        _ = manager.createSidebarFolder(name: folderName, containingItemIds: ids)
     }
 
     private func closeWorkspaceIds(
@@ -985,6 +987,14 @@ struct cmuxApp: App {
                 .disabled(target.isCurrentWindow || workspace == nil)
             }
         }
+        .disabled(workspace == nil)
+
+        Divider()
+
+        Button(String(localized: "menu.workspace.groupIntoFolder", defaultValue: "Group into Folder")) {
+            groupSelectedWorkspacesIntoFolder(in: manager)
+        }
+        .keyboardShortcut("g", modifiers: .command)
         .disabled(workspace == nil)
 
         Divider()
@@ -1520,8 +1530,8 @@ private enum DebugWindowConfigSnapshot {
 
     static func combinedPayload(defaults: UserDefaults = .standard) -> String {
         let sidebarPayload = """
-        sidebarPreset=\(stringValue(defaults, key: "sidebarPreset", fallback: SidebarPresetOption.nativeSidebar.rawValue))
-        sidebarMaterial=\(stringValue(defaults, key: "sidebarMaterial", fallback: SidebarMaterialOption.sidebar.rawValue))
+        sidebarPreset=\(stringValue(defaults, key: "sidebarPreset", fallback: SidebarPresetOption.matchTerminal.rawValue))
+        sidebarMaterial=\(stringValue(defaults, key: "sidebarMaterial", fallback: SidebarMaterialOption.matchTerminal.rawValue))
         sidebarBlendMode=\(stringValue(defaults, key: "sidebarBlendMode", fallback: SidebarBlendModeOption.withinWindow.rawValue))
         sidebarState=\(stringValue(defaults, key: "sidebarState", fallback: SidebarStateOption.followWindow.rawValue))
         sidebarBlurOpacity=\(String(format: "%.2f", doubleValue(defaults, key: "sidebarBlurOpacity", fallback: 1.0)))
@@ -2152,10 +2162,10 @@ private struct AboutPanelView: View {
 }
 
 private struct SidebarDebugView: View {
-    @AppStorage("sidebarPreset") private var sidebarPreset = SidebarPresetOption.nativeSidebar.rawValue
+    @AppStorage("sidebarPreset") private var sidebarPreset = SidebarPresetOption.matchTerminal.rawValue
     @AppStorage("sidebarTintOpacity") private var sidebarTintOpacity = 0.18
     @AppStorage("sidebarTintHex") private var sidebarTintHex = "#000000"
-    @AppStorage("sidebarMaterial") private var sidebarMaterial = SidebarMaterialOption.sidebar.rawValue
+    @AppStorage("sidebarMaterial") private var sidebarMaterial = SidebarMaterialOption.matchTerminal.rawValue
     @AppStorage("sidebarBlendMode") private var sidebarBlendMode = SidebarBlendModeOption.withinWindow.rawValue
     @AppStorage("sidebarState") private var sidebarState = SidebarStateOption.followWindow.rawValue
     @AppStorage("sidebarCornerRadius") private var sidebarCornerRadius = 0.0
@@ -2834,7 +2844,7 @@ enum AppearanceMode: String, CaseIterable, Identifiable {
 
 enum AppearanceSettings {
     static let appearanceModeKey = "appearanceMode"
-    static let defaultMode: AppearanceMode = .system
+    static let defaultMode: AppearanceMode = .dark
 
     static func mode(for rawValue: String?) -> AppearanceMode {
         guard let rawValue, let mode = AppearanceMode(rawValue: rawValue) else {
@@ -3106,6 +3116,8 @@ struct SettingsView: View {
     private var showShortcutHintsOnCommandHold = ShortcutHintDebugSettings.defaultShowHintsOnCommandHold
     @AppStorage("sidebarShowPorts") private var sidebarShowPorts = true
     @AppStorage("sidebarShowLog") private var sidebarShowLog = true
+    @AppStorage("hideBrowserButton") private var hideBrowserButton = false
+    @AppStorage("sidebarPreset") private var sidebarPreset = SidebarPresetOption.matchTerminal.rawValue
     @AppStorage("sidebarShowProgress") private var sidebarShowProgress = true
     @AppStorage("sidebarShowStatusPills") private var sidebarShowMetadata = true
     @ObservedObject private var notificationStore = TerminalNotificationStore.shared
@@ -3487,6 +3499,29 @@ struct SettingsView: View {
                                 AppIconSettings.applyIcon(mode)
                             }
                         )
+
+                        SettingsCardDivider()
+
+                        SettingsPickerRow(
+                            String(localized: "settings.app.sidebarStyle", defaultValue: "Sidebar Style"),
+                            subtitle: String(localized: "settings.app.sidebarStyle.subtitle", defaultValue: "Controls the sidebar background appearance."),
+                            controlWidth: pickerColumnWidth,
+                            selection: $sidebarPreset
+                        ) {
+                            ForEach(SidebarPresetOption.allCases) { option in
+                                Text(option.title).tag(option.rawValue)
+                            }
+                        }
+                        .onChange(of: sidebarPreset) { _ in
+                            guard let preset = SidebarPresetOption(rawValue: sidebarPreset) else { return }
+                            UserDefaults.standard.set(preset.material.rawValue, forKey: "sidebarMaterial")
+                            UserDefaults.standard.set(preset.blendMode.rawValue, forKey: "sidebarBlendMode")
+                            UserDefaults.standard.set(preset.state.rawValue, forKey: "sidebarState")
+                            UserDefaults.standard.set(preset.tintHex, forKey: "sidebarTintHex")
+                            UserDefaults.standard.set(preset.tintOpacity, forKey: "sidebarTintOpacity")
+                            UserDefaults.standard.set(preset.cornerRadius, forKey: "sidebarCornerRadius")
+                            UserDefaults.standard.set(preset.blurOpacity, forKey: "sidebarBlurOpacity")
+                        }
 
                         SettingsCardDivider()
 
@@ -4042,6 +4077,20 @@ struct SettingsView: View {
 
                     SettingsSectionHeader(title: String(localized: "settings.section.browser", defaultValue: "Browser"))
                     SettingsCard {
+                        SettingsCardRow(
+                            String(localized: "settings.browser.hideBrowserButton", defaultValue: "Hide Browser Button"),
+                            subtitle: String(localized: "settings.browser.hideBrowserButton.subtitle", defaultValue: "Hide the globe icon from the pane toolbar.")
+                        ) {
+                            Toggle("", isOn: $hideBrowserButton)
+                                .labelsHidden()
+                                .controlSize(.small)
+                                .onChange(of: hideBrowserButton) { _ in
+                                    AppDelegate.shared?.scheduleSplitButtonTooltipRefreshAcrossWorkspaces()
+                                }
+                        }
+
+                        SettingsCardDivider()
+
                         SettingsPickerRow(
                             String(localized: "settings.browser.searchEngine", defaultValue: "Default Search Engine"),
                             subtitle: String(localized: "settings.browser.searchEngine.subtitle", defaultValue: "Used by the browser address bar when input is not a URL."),
@@ -4503,6 +4552,8 @@ struct SettingsView: View {
         sidebarShowLog = true
         sidebarShowProgress = true
         sidebarShowMetadata = true
+        sidebarPreset = SidebarPresetOption.matchTerminal.rawValue
+        hideBrowserButton = false
         showOpenAccessConfirmation = false
         pendingOpenAccessMode = nil
         socketPasswordDraft = ""

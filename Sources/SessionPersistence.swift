@@ -7,8 +7,8 @@ enum SessionSnapshotSchema {
 }
 
 enum SessionPersistencePolicy {
-    static let defaultSidebarWidth: Double = 200
-    static let minimumSidebarWidth: Double = 180
+    static let defaultSidebarWidth: Double = 210
+    static let minimumSidebarWidth: Double = 200
     static let maximumSidebarWidth: Double = 600
     static let minimumWindowWidth: Double = 300
     static let minimumWindowHeight: Double = 200
@@ -327,6 +327,7 @@ indirect enum SessionWorkspaceLayoutSnapshot: Codable, Sendable {
 }
 
 struct SessionWorkspaceSnapshot: Codable, Sendable {
+    var workspaceId: UUID?
     var processTitle: String
     var customTitle: String?
     var customColor: String?
@@ -344,6 +345,7 @@ struct SessionWorkspaceSnapshot: Codable, Sendable {
 struct SessionTabManagerSnapshot: Codable, Sendable {
     var selectedWorkspaceIndex: Int?
     var workspaces: [SessionWorkspaceSnapshot]
+    var folderTree: [SidebarItem]?
 }
 
 struct SessionWindowSnapshot: Codable, Sendable {

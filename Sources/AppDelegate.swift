@@ -3935,6 +3935,47 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         return moved
     }
 
+    /// Merge all panels from the source workspace into the target workspace.
+    /// The source workspace auto-closes when empty.
+    @discardableResult
+    func mergeWorkspace(
+        sourceWorkspaceId: UUID,
+        into targetWorkspaceId: UUID,
+        focus: Bool = false
+    ) -> Bool {
+        guard sourceWorkspaceId != targetWorkspaceId else { return false }
+
+        // Find source workspace and its panels
+        guard let sourceContext = mainWindowContexts.values.first(where: {
+            $0.tabManager.tabs.contains(where: { $0.id == sourceWorkspaceId })
+        }) else { return false }
+        guard let sourceWorkspace = sourceContext.tabManager.tabs.first(where: { $0.id == sourceWorkspaceId }) else { return false }
+
+        let panelIds = sourceWorkspace.sidebarOrderedPanelIds()
+        guard !panelIds.isEmpty else { return false }
+
+        // Move each panel to the target workspace
+        for panelId in panelIds {
+            moveSurface(
+                panelId: panelId,
+                toWorkspace: targetWorkspaceId,
+                focus: false,
+                focusWindow: false
+            )
+        }
+
+        // If focus requested, select the target workspace
+        if focus {
+            if let targetContext = mainWindowContexts.values.first(where: {
+                $0.tabManager.tabs.contains(where: { $0.id == targetWorkspaceId })
+            }) {
+                targetContext.tabManager.selectedTabId = targetWorkspaceId
+            }
+        }
+
+        return true
+    }
+
     func tabManagerFor(windowId: UUID) -> TabManager? {
         mainWindowContexts.values.first(where: { $0.windowId == windowId })?.tabManager
     }
@@ -5708,6 +5749,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
     @objc func openPreferencesWindow() {
         openPreferencesWindow(debugSource: "appDelegate")
+    }
+
+    // MARK: - Template Creation
+
+    private var templateCreationWindowController: TemplateCreationWindowController?
+
+    func openTemplateCreationDialog() {
+        if let existing = templateCreationWindowController, existing.window?.isVisible == true {
+            existing.window?.makeKeyAndOrderFront(nil)
+            return
+        }
+        let controller = TemplateCreationWindowController { [weak self] template in
+            self?.tabManager?.addWorkspaceFromTemplate(template)
+        }
+        templateCreationWindowController = controller
+        controller.showWindow(nil)
+        controller.window?.makeKeyAndOrderFront(nil)
     }
 
     func refreshMenuBarExtraForDebug() {
@@ -7619,7 +7677,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
     /// Coalesce shortcut-default changes and refresh on the next runloop turn to
     /// avoid mutating Bonsplit/SwiftUI-observed state during an active update pass.
-    private func scheduleSplitButtonTooltipRefreshAcrossWorkspaces() {
+    func scheduleSplitButtonTooltipRefreshAcrossWorkspaces() {
         guard !splitButtonTooltipRefreshScheduled else { return }
         splitButtonTooltipRefreshScheduled = true
         DispatchQueue.main.async { [weak self] in

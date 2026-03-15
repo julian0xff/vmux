@@ -240,6 +240,7 @@ struct TitlebarControlsView: View {
     let onToggleSidebar: () -> Void
     let onToggleNotifications: () -> Void
     let onNewTab: () -> Void
+    let onNewTemplate: () -> Void
     @AppStorage("titlebarControlsStyle") private var styleRawValue = TitlebarControlsStyle.classic.rawValue
     @AppStorage(ShortcutHintDebugSettings.titlebarHintXKey) private var titlebarShortcutHintXOffset = ShortcutHintDebugSettings.defaultTitlebarHintX
     @AppStorage(ShortcutHintDebugSettings.titlebarHintYKey) private var titlebarShortcutHintYOffset = ShortcutHintDebugSettings.defaultTitlebarHintY
@@ -356,6 +357,18 @@ struct TitlebarControlsView: View {
             .background(NotificationsAnchorView { viewModel.notificationsAnchorView = $0 })
             .accessibilityLabel(String(localized: "titlebar.notifications.accessibilityLabel", defaultValue: "Notifications"))
             .safeHelp(KeyboardShortcutSettings.Action.showNotifications.tooltip(String(localized: "titlebar.notifications.tooltip", defaultValue: "Show notifications")))
+
+            TitlebarControlButton(config: config, action: {
+                #if DEBUG
+                dlog("titlebar.newTemplate")
+                #endif
+                onNewTemplate()
+            }) {
+                iconLabel(systemName: "square.grid.2x2", config: config)
+            }
+            .accessibilityIdentifier("titlebarControl.newTemplate")
+            .accessibilityLabel(String(localized: "titlebar.newTemplate.accessibilityLabel", defaultValue: "New from Template"))
+            .safeHelp(String(localized: "titlebar.newTemplate.tooltip", defaultValue: "New workspace from template"))
 
             TitlebarControlButton(config: config, action: {
                 #if DEBUG
@@ -720,6 +733,7 @@ final class TitlebarControlsAccessoryViewController: NSTitlebarAccessoryViewCont
         let toggleSidebar = { _ = AppDelegate.shared?.sidebarState?.toggle() }
         let toggleNotifications: () -> Void = { _ = AppDelegate.shared?.toggleNotificationsPopover(animated: true) }
         let newTab = { _ = AppDelegate.shared?.tabManager?.addTab() }
+        let newTemplate: () -> Void = { AppDelegate.shared?.openTemplateCreationDialog() }
 
         hostingView = NonDraggableHostingView(
             rootView: TitlebarControlsView(
@@ -727,7 +741,8 @@ final class TitlebarControlsAccessoryViewController: NSTitlebarAccessoryViewCont
                 viewModel: viewModel,
                 onToggleSidebar: toggleSidebar,
                 onToggleNotifications: toggleNotifications,
-                onNewTab: newTab
+                onNewTab: newTab,
+                onNewTemplate: newTemplate
             )
         )
 

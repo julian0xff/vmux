@@ -151,6 +151,7 @@ extension Workspace {
         }
 
         return SessionWorkspaceSnapshot(
+            workspaceId: id,
             processTitle: processTitle,
             customTitle: customTitle,
             customColor: customColor,
@@ -1073,7 +1074,9 @@ final class Workspace: Identifiable, ObservableObject {
         from backgroundColor: NSColor,
         backgroundOpacity: Double
     ) -> BonsplitConfiguration.Appearance {
-        BonsplitConfiguration.Appearance(
+        let showBrowser = !UserDefaults.standard.bool(forKey: "hideBrowserButton")
+        return BonsplitConfiguration.Appearance(
+            showBrowserButton: showBrowser,
             splitButtonTooltips: Self.currentSplitButtonTooltips(),
             enableAnimations: false,
             chromeColors: .init(
@@ -1128,12 +1131,13 @@ final class Workspace: Identifiable, ObservableObject {
     }
 
     init(
+        id: UUID = UUID(),
         title: String = "Terminal",
         workingDirectory: String? = nil,
         portOrdinal: Int = 0,
         configTemplate: ghostty_surface_config_s? = nil
     ) {
-        self.id = UUID()
+        self.id = id
         self.portOrdinal = portOrdinal
         self.processTitle = title
         self.title = title
@@ -1232,9 +1236,13 @@ final class Workspace: Identifiable, ObservableObject {
 
     func refreshSplitButtonTooltips() {
         let tooltips = Self.currentSplitButtonTooltips()
+        let showBrowser = !UserDefaults.standard.bool(forKey: "hideBrowserButton")
         var configuration = bonsplitController.configuration
-        guard configuration.appearance.splitButtonTooltips != tooltips else { return }
+        let tooltipsChanged = configuration.appearance.splitButtonTooltips != tooltips
+        let browserChanged = configuration.appearance.showBrowserButton != showBrowser
+        guard tooltipsChanged || browserChanged else { return }
         configuration.appearance.splitButtonTooltips = tooltips
+        configuration.appearance.showBrowserButton = showBrowser
         bonsplitController.configuration = configuration
     }
 
@@ -2200,6 +2208,65 @@ final class Workspace: Identifiable, ObservableObject {
         }
 
         return newPanel
+    }
+
+    /// Apply a template layout by creating splits from the initial single pane.
+    /// Returns the panel IDs in slot order (first element is the root pane).
+    func applyTemplateLayout(_ layout: TemplateLayout) -> [UUID] {
+        guard let rootPanelId = focusedTerminalPanel?.id else { return [] }
+
+        switch layout {
+        case .single:
+            return [rootPanelId]
+
+        case .twoVertical:
+            // Split root horizontally → left | right
+            guard let right = newTerminalSplit(from: rootPanelId, orientation: .horizontal, focus: false) else {
+                return [rootPanelId]
+            }
+            return [rootPanelId, right.id]
+
+        case .twoHorizontal:
+            // Split root vertically → top / bottom
+            guard let bottom = newTerminalSplit(from: rootPanelId, orientation: .vertical, focus: false) else {
+                return [rootPanelId]
+            }
+            return [rootPanelId, bottom.id]
+
+        case .threeLeftWide:
+            // Split root horizontally → left | right, then split right vertically
+            guard let right = newTerminalSplit(from: rootPanelId, orientation: .horizontal, focus: false) else {
+                return [rootPanelId]
+            }
+            guard let bottomRight = newTerminalSplit(from: right.id, orientation: .vertical, focus: false) else {
+                return [rootPanelId, right.id]
+            }
+            return [rootPanelId, right.id, bottomRight.id]
+
+        case .threeTopWide:
+            // Split root vertically → top / bottom, then split bottom horizontally
+            guard let bottom = newTerminalSplit(from: rootPanelId, orientation: .vertical, focus: false) else {
+                return [rootPanelId]
+            }
+            guard let bottomRight = newTerminalSplit(from: bottom.id, orientation: .horizontal, focus: false) else {
+                return [rootPanelId, bottom.id]
+            }
+            return [rootPanelId, bottom.id, bottomRight.id]
+
+        case .fourGrid:
+            // Split root horizontally → left | right
+            // Then split left vertically, then split right vertically
+            guard let right = newTerminalSplit(from: rootPanelId, orientation: .horizontal, focus: false) else {
+                return [rootPanelId]
+            }
+            guard let bottomLeft = newTerminalSplit(from: rootPanelId, orientation: .vertical, focus: false) else {
+                return [rootPanelId, right.id]
+            }
+            guard let bottomRight = newTerminalSplit(from: right.id, orientation: .vertical, focus: false) else {
+                return [rootPanelId, right.id, bottomLeft.id]
+            }
+            return [rootPanelId, right.id, bottomLeft.id, bottomRight.id]
+        }
     }
 
     /// Create a new surface (nested tab) in the specified pane with a terminal panel.

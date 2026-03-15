@@ -75,11 +75,33 @@ func cmuxAccentColor() -> Color {
 }
 
 func sidebarSelectedWorkspaceBackgroundNSColor(for colorScheme: ColorScheme) -> NSColor {
-    cmuxAccentNSColor(for: colorScheme)
+    let material = SidebarMaterialOption(
+        rawValue: UserDefaults.standard.string(forKey: "sidebarMaterial")
+            ?? SidebarMaterialOption.matchTerminal.rawValue
+    )
+    if material?.usesTerminalBackground == true {
+        let bgColor = GhosttyApp.shared.defaultBackgroundColor
+        let isLight = bgColor.isLightColor
+        // Lighten for dark backgrounds, darken for light backgrounds
+        if isLight {
+            return bgColor.darken(by: 0.12)
+        } else {
+            return bgColor.lighten(by: 0.15)
+        }
+    }
+    return cmuxAccentNSColor(for: colorScheme)
 }
 
 func sidebarSelectedWorkspaceForegroundNSColor(opacity: CGFloat) -> NSColor {
     let clampedOpacity = max(0, min(opacity, 1))
+    let material = SidebarMaterialOption(
+        rawValue: UserDefaults.standard.string(forKey: "sidebarMaterial")
+            ?? SidebarMaterialOption.matchTerminal.rawValue
+    )
+    if material?.usesTerminalBackground == true {
+        let fgColor = GhosttyConfig.load().foregroundColor
+        return fgColor.withAlphaComponent(clampedOpacity)
+    }
     return NSColor.white.withAlphaComponent(clampedOpacity)
 }
 
@@ -1940,6 +1962,7 @@ struct ContentView: View {
     private var sidebarView: some View {
         VerticalTabsSidebar(
             updateViewModel: updateViewModel,
+            folderStore: tabManager.folderStore,
             onSendFeedback: presentFeedbackComposer,
             selection: $sidebarSelectionState.selection,
             selectedTabIds: $selectedTabIds,
@@ -2046,7 +2069,8 @@ struct ContentView: View {
                     anchorView: fullscreenControlsViewModel.notificationsAnchorView
                 )
             },
-            onNewTab: { tabManager.addTab() }
+            onNewTab: { tabManager.addTab() },
+            onNewTemplate: { AppDelegate.shared?.openTemplateCreationDialog() }
         )
     }
 
@@ -2416,7 +2440,7 @@ struct ContentView: View {
             }
             tabManager.pruneBackgroundWorkspaceLoads(existingIds: existingIds)
             reconcileMountedWorkspaceIds(tabs: tabs)
-            selectedTabIds = selectedTabIds.filter { existingIds.contains($0) }
+            selectedTabIds = selectedTabIds.filter { tabManager.isKnownSidebarItemId($0) || existingIds.contains($0) }
             if selectedTabIds.isEmpty, let selectedId = tabManager.selectedTabId {
                 selectedTabIds = [selectedId]
             }
@@ -6555,6 +6579,7 @@ struct ContentView: View {
     }
 
     private func syncSidebarSelectedWorkspaceIds() {
+        tabManager.setSidebarSelectedItemIds(selectedTabIds)
         tabManager.setSidebarSelectedWorkspaceIds(selectedTabIds)
     }
 
@@ -7750,6 +7775,7 @@ private struct SidebarResizerAccessibilityModifier: ViewModifier {
 
 struct VerticalTabsSidebar: View {
     @ObservedObject var updateViewModel: UpdateViewModel
+    @ObservedObject var folderStore: SidebarFolderStore
     let onSendFeedback: () -> Void
     @EnvironmentObject var tabManager: TabManager
     @EnvironmentObject var notificationStore: TerminalNotificationStore
@@ -7761,6 +7787,7 @@ struct VerticalTabsSidebar: View {
     @StateObject private var dragFailsafeMonitor = SidebarDragFailsafeMonitor()
     @State private var draggedTabId: UUID?
     @State private var dropIndicator: SidebarDropIndicator?
+    @State private var bonsplitDropTargetId: UUID?
     @AppStorage(SidebarWorkspaceDetailSettings.hideAllDetailsKey)
     private var sidebarHideAllDetails = SidebarWorkspaceDetailSettings.defaultHideAllDetails
     @AppStorage(SidebarWorkspaceDetailSettings.showNotificationMessageKey)
@@ -7790,39 +7817,73 @@ struct VerticalTabsSidebar: View {
                             .frame(height: trafficLightPadding)
 
                         LazyVStack(spacing: tabRowSpacing) {
-                            ForEach(Array(tabManager.tabs.enumerated()), id: \.element.id) { index, tab in
-                                TabItemView(
-                                    tabManager: tabManager,
-                                    notificationStore: notificationStore,
-                                    tab: tab,
-                                    index: index,
-                                    isActive: tabManager.selectedTabId == tab.id,
-                                    workspaceShortcutDigit: WorkspaceShortcutMapper.commandDigitForWorkspace(
-                                        at: index,
-                                        workspaceCount: workspaceCount
-                                    ),
-                                    canCloseWorkspace: canCloseWorkspace,
-                                    accessibilityWorkspaceCount: workspaceCount,
-                                    unreadCount: notificationStore.unreadCount(forTabId: tab.id),
-                                    latestNotificationText: {
-                                        guard showsSidebarNotificationMessage,
-                                              let notification = notificationStore.latestNotification(forTabId: tab.id) else {
-                                            return nil
+                            let flatItems = folderStore.flatVisibleItems
+                            let tabsById = Dictionary(uniqueKeysWithValues: tabManager.tabs.map { ($0.id, $0) })
+                            let workspaceIndicesById = Dictionary(uniqueKeysWithValues: tabManager.tabs.enumerated().map { ($0.element.id, $0.offset) })
+                            ForEach(flatItems) { item in
+                                switch item.content {
+                                case .workspace(let visualIndex):
+                                    if let tab = tabsById[item.id],
+                                       let workspaceIndex = workspaceIndicesById[item.id] {
+                                        TabItemView(
+                                            tabManager: tabManager,
+                                            notificationStore: notificationStore,
+                                            tab: tab,
+                                            tabIndex: workspaceIndex,
+                                            visibleIndex: visualIndex,
+                                            isActive: tabManager.selectedTabId == tab.id,
+                                            workspaceShortcutDigit: WorkspaceShortcutMapper.commandDigitForWorkspace(
+                                                at: workspaceIndex,
+                                                workspaceCount: tabManager.tabs.count
+                                            ),
+                                            canCloseWorkspace: canCloseWorkspace,
+                                            accessibilityWorkspaceCount: workspaceCount,
+                                            unreadCount: notificationStore.unreadCount(forTabId: tab.id),
+                                            latestNotificationText: {
+                                                guard showsSidebarNotificationMessage,
+                                                      let notification = notificationStore.latestNotification(forTabId: tab.id) else {
+                                                    return nil
+                                                }
+                                                let text = notification.body.isEmpty ? notification.title : notification.body
+                                                let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                                                return trimmed.isEmpty ? nil : trimmed
+                                            }(),
+                                            rowSpacing: tabRowSpacing,
+                                            setSelectionToTabs: { selection = .tabs },
+                                            selectedTabIds: $selectedTabIds,
+                                            lastSidebarSelectionIndex: $lastSidebarSelectionIndex,
+                                            showsModifierShortcutHints: modifierKeyMonitor.isModifierPressed,
+                                            dragAutoScrollController: dragAutoScrollController,
+                                            draggedTabId: $draggedTabId,
+                                            dropIndicator: $dropIndicator,
+                                            bonsplitDropTargetId: $bonsplitDropTargetId
+                                        )
+                                        .equatable()
+                                        .padding(.leading, CGFloat(item.depth) * 16)
+                                        .overlay(alignment: .leading) {
+                                            SidebarIndentGuides(depth: item.depth)
                                         }
-                                        let text = notification.body.isEmpty ? notification.title : notification.body
-                                        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-                                        return trimmed.isEmpty ? nil : trimmed
-                                    }(),
-                                    rowSpacing: tabRowSpacing,
-                                    setSelectionToTabs: { selection = .tabs },
-                                    selectedTabIds: $selectedTabIds,
-                                    lastSidebarSelectionIndex: $lastSidebarSelectionIndex,
-                                    showsModifierShortcutHints: modifierKeyMonitor.isModifierPressed,
-                                    dragAutoScrollController: dragAutoScrollController,
-                                    draggedTabId: $draggedTabId,
-                                    dropIndicator: $dropIndicator
-                                )
-                                .equatable()
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 6)
+                                                .stroke(cmuxAccentColor(), lineWidth: 2)
+                                                .opacity(bonsplitDropTargetId == tab.id ? 1 : 0)
+                                        )
+                                    }
+                                case .folderHeader(let folder):
+                                    SidebarFolderHeaderView(
+                                        folder: folder,
+                                        depth: item.depth,
+                                        folderStore: tabManager.folderStore,
+                                        tabManager: tabManager,
+                                        dragAutoScrollController: dragAutoScrollController,
+                                        draggedTabId: $draggedTabId,
+                                        dropIndicator: $dropIndicator,
+                                        selectedTabIds: $selectedTabIds
+                                    )
+                                    .overlay(alignment: .leading) {
+                                        SidebarIndentGuides(depth: item.depth)
+                                    }
+                                }
                             }
                         }
                         .padding(.vertical, 8)
@@ -7834,7 +7895,8 @@ struct VerticalTabsSidebar: View {
                             lastSidebarSelectionIndex: $lastSidebarSelectionIndex,
                             dragAutoScrollController: dragAutoScrollController,
                             draggedTabId: $draggedTabId,
-                            dropIndicator: $dropIndicator
+                            dropIndicator: $dropIndicator,
+                            bonsplitDropTargetId: $bonsplitDropTargetId
                         )
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
@@ -9955,6 +10017,7 @@ private struct SidebarEmptyArea: View {
     let dragAutoScrollController: SidebarDragAutoScrollController
     @Binding var draggedTabId: UUID?
     @Binding var dropIndicator: SidebarDropIndicator?
+    @Binding var bonsplitDropTargetId: UUID?
 
     var body: some View {
         Color.clear
@@ -9968,7 +10031,7 @@ private struct SidebarEmptyArea: View {
                 }
                 selection = .tabs
             }
-            .onDrop(of: SidebarTabDragPayload.dropContentTypes, delegate: SidebarTabDropDelegate(
+            .onDrop(of: SidebarUnifiedDropDelegate.acceptedTypes, delegate: SidebarUnifiedDropDelegate(
                 targetTabId: nil,
                 tabManager: tabManager,
                 draggedTabId: $draggedTabId,
@@ -9976,7 +10039,8 @@ private struct SidebarEmptyArea: View {
                 lastSidebarSelectionIndex: $lastSidebarSelectionIndex,
                 targetRowHeight: nil,
                 dragAutoScrollController: dragAutoScrollController,
-                dropIndicator: $dropIndicator
+                dropIndicator: $dropIndicator,
+                bonsplitDropTargetId: $bonsplitDropTargetId
             ))
             .overlay(alignment: .top) {
                 if shouldShowTopDropIndicator {
@@ -9987,11 +10051,17 @@ private struct SidebarEmptyArea: View {
                         .offset(y: -(rowSpacing / 2))
                 }
             }
+            .contextMenu {
+                Button(String(localized: "contextMenu.newFolder", defaultValue: "New Folder")) {
+                    let folderName = String(localized: "folder.defaultName", defaultValue: "New Folder")
+                    _ = tabManager.createSidebarFolder(name: folderName)
+                }
+            }
     }
 
     private var shouldShowTopDropIndicator: Bool {
         guard draggedTabId != nil, let indicator = dropIndicator else { return false }
-        if indicator.tabId == nil {
+        if indicator.tabId == nil && !indicator.isIntoFolder {
             return true
         }
         guard indicator.edge == .bottom, let lastTabId = tabManager.tabs.last?.id else { return false }
@@ -10082,7 +10152,8 @@ private struct TabItemView: View, Equatable {
     // because they're recreated every parent eval but don't affect rendering.
     nonisolated static func == (lhs: TabItemView, rhs: TabItemView) -> Bool {
         lhs.tab === rhs.tab &&
-        lhs.index == rhs.index &&
+        lhs.tabIndex == rhs.tabIndex &&
+        lhs.visibleIndex == rhs.visibleIndex &&
         lhs.isActive == rhs.isActive &&
         lhs.workspaceShortcutDigit == rhs.workspaceShortcutDigit &&
         lhs.canCloseWorkspace == rhs.canCloseWorkspace &&
@@ -10100,7 +10171,8 @@ private struct TabItemView: View, Equatable {
     let notificationStore: TerminalNotificationStore
     @Environment(\.colorScheme) private var colorScheme
     @ObservedObject var tab: Tab
-    let index: Int
+    let tabIndex: Int
+    let visibleIndex: Int
     let isActive: Bool
     let workspaceShortcutDigit: Int?
     let canCloseWorkspace: Bool
@@ -10115,6 +10187,7 @@ private struct TabItemView: View, Equatable {
     let dragAutoScrollController: SidebarDragAutoScrollController
     @Binding var draggedTabId: UUID?
     @Binding var dropIndicator: SidebarDropIndicator?
+    @Binding var bonsplitDropTargetId: UUID?
     @State private var isHovering = false
     @State private var rowHeight: CGFloat = 1
     @AppStorage(ShortcutHintDebugSettings.sidebarHintXKey) private var sidebarShortcutHintXOffset = ShortcutHintDebugSettings.defaultSidebarHintX
@@ -10211,6 +10284,20 @@ private struct TabItemView: View, Equatable {
         isHovering && canCloseWorkspace && !(showsModifierShortcutHints || alwaysShowShortcutHints)
     }
 
+    private var visibleWorkspaceIndex: Int? {
+        tabManager.folderStore.visibleWorkspaceIds.firstIndex(of: tab.id)
+    }
+
+    private var canMoveUp: Bool {
+        guard let visibleWorkspaceIndex else { return false }
+        return visibleWorkspaceIndex > 0
+    }
+
+    private var canMoveDown: Bool {
+        guard let visibleWorkspaceIndex else { return false }
+        return visibleWorkspaceIndex < tabManager.folderStore.visibleWorkspaceIds.count - 1
+    }
+
     private var workspaceShortcutLabel: String? {
         guard let workspaceShortcutDigit else { return nil }
         return "⌘\(workspaceShortcutDigit)"
@@ -10284,6 +10371,10 @@ private struct TabItemView: View, Equatable {
             return pullRequestDisplays(orderedPanelIds: orderedPanelIds)
         }()
 
+        HStack(alignment: .center, spacing: 6) {
+            Image(systemName: "rectangle.split.2x1.fill")
+                .font(.system(size: 18))
+                .foregroundColor(activeSecondaryColor(0.5))
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
                 if unreadCount > 0 {
@@ -10510,6 +10601,7 @@ private struct TabItemView: View, Equatable {
                     .truncationMode(.tail)
             }
         }
+        } // end workspace icon HStack
         .animation(.easeInOut(duration: 0.2), value: tab.logEntries.count)
         .animation(.easeInOut(duration: 0.2), value: tab.progress != nil)
         .animation(.easeInOut(duration: 0.2), value: tab.metadataBlocks.count)
@@ -10561,7 +10653,7 @@ private struct TabItemView: View, Equatable {
                     .fill(cmuxAccentColor())
                     .frame(height: 2)
                     .padding(.horizontal, 8)
-                    .offset(y: index == 0 ? 0 : -(rowSpacing / 2))
+                    .offset(y: visibleIndex == 0 ? 0 : -(rowSpacing / 2))
             }
         }
         .onDrag {
@@ -10573,7 +10665,7 @@ private struct TabItemView: View, Equatable {
             return SidebarTabDragPayload.provider(for: tab.id)
         }
         .internalOnlyTabDrag()
-        .onDrop(of: SidebarTabDragPayload.dropContentTypes, delegate: SidebarTabDropDelegate(
+        .onDrop(of: SidebarUnifiedDropDelegate.acceptedTypes, delegate: SidebarUnifiedDropDelegate(
             targetTabId: tab.id,
             tabManager: tabManager,
             draggedTabId: $draggedTabId,
@@ -10581,13 +10673,8 @@ private struct TabItemView: View, Equatable {
             lastSidebarSelectionIndex: $lastSidebarSelectionIndex,
             targetRowHeight: rowHeight,
             dragAutoScrollController: dragAutoScrollController,
-            dropIndicator: $dropIndicator
-        ))
-        .onDrop(of: BonsplitTabDragPayload.dropContentTypes, delegate: SidebarBonsplitTabDropDelegate(
-            targetWorkspaceId: tab.id,
-            tabManager: tabManager,
-            selectedTabIds: $selectedTabIds,
-            lastSidebarSelectionIndex: $lastSidebarSelectionIndex
+            dropIndicator: $dropIndicator,
+            bonsplitDropTargetId: $bonsplitDropTargetId
         ))
         .onTapGesture {
             updateSelection()
@@ -10703,12 +10790,12 @@ private struct TabItemView: View, Equatable {
         Button(String(localized: "contextMenu.moveUp", defaultValue: "Move Up")) {
             moveBy(-1)
         }
-        .disabled(index == 0)
+        .disabled(!canMoveUp)
 
         Button(String(localized: "contextMenu.moveDown", defaultValue: "Move Down")) {
             moveBy(1)
         }
-        .disabled(index >= tabManager.tabs.count - 1)
+        .disabled(!canMoveDown)
 
         Button(String(localized: "contextMenu.moveToTop", defaultValue: "Move to Top")) {
             tabManager.moveTabsToTop(Set(targetIds))
@@ -10740,6 +10827,51 @@ private struct TabItemView: View, Equatable {
         }
         .disabled(targetIds.isEmpty)
 
+        // Folder operations
+        let allFolders = tabManager.folderStore.allFolders()
+        let currentParentFolderId = tabManager.folderStore.parentFolderId(of: tab.id)
+        Menu(String(localized: "contextMenu.moveToFolder", defaultValue: "Move to Folder")) {
+            Button(String(localized: "contextMenu.rootLevel", defaultValue: "None (Root Level)")) {
+                tabManager.moveSidebarItems(targetIds, toParent: nil)
+                syncSelectionAfterMutation()
+            }
+            .disabled(currentParentFolderId == nil && !isMulti)
+
+            if !allFolders.isEmpty {
+                Divider()
+            }
+
+            ForEach(allFolders) { folder in
+                Button(folder.name) {
+                    tabManager.moveSidebarItems(targetIds, toParent: folder.id)
+                    syncSelectionAfterMutation()
+                }
+                .disabled(folder.id == currentParentFolderId)
+            }
+        }
+        .disabled(targetIds.isEmpty)
+
+        Button(String(localized: "contextMenu.groupIntoFolder", defaultValue: "Group into Folder")) {
+            let folderName = String(localized: "folder.defaultName", defaultValue: "New Folder")
+            _ = tabManager.createSidebarFolder(name: folderName, containingItemIds: targetIds)
+            syncSelectionAfterMutation()
+        }
+        .keyboardShortcut("g", modifiers: .command)
+        .disabled(targetIds.isEmpty)
+
+        // Merge workspace(s) here — shown when selected workspaces differ from right-clicked target
+        let mergeSourceIds = selectedTabIds.filter { $0 != tab.id }
+        if !mergeSourceIds.isEmpty {
+            let mergeLabel = mergeSourceIds.count == 1
+                ? String(localized: "contextMenu.mergeWorkspaceHere", defaultValue: "Merge Workspace Here")
+                : String(localized: "contextMenu.mergeWorkspacesHere", defaultValue: "Merge Workspaces Here")
+            Button(mergeLabel) {
+                for sourceId in mergeSourceIds {
+                    AppDelegate.shared?.mergeWorkspace(sourceWorkspaceId: sourceId, into: tab.id)
+                }
+            }
+        }
+
         Divider()
 
         if let key = closeWorkspaceShortcut.keyEquivalent {
@@ -10763,12 +10895,12 @@ private struct TabItemView: View, Equatable {
         Button(String(localized: "contextMenu.closeWorkspacesBelow", defaultValue: "Close Workspaces Below")) {
             closeTabsBelow(tabId: tab.id)
         }
-        .disabled(index >= tabManager.tabs.count - 1)
+        .disabled(tabIndex >= tabManager.tabs.count - 1)
 
         Button(String(localized: "contextMenu.closeWorkspacesAbove", defaultValue: "Close Workspaces Above")) {
             closeTabsAbove(tabId: tab.id)
         }
-        .disabled(index == 0)
+        .disabled(tabIndex == 0)
 
         Divider()
 
@@ -10845,13 +10977,11 @@ private struct TabItemView: View, Equatable {
     }
 
     private var accessibilityTitle: String {
-        String(localized: "accessibility.workspacePosition", defaultValue: "\(tab.title), workspace \(index + 1) of \(accessibilityWorkspaceCount)")
+        String(localized: "accessibility.workspacePosition", defaultValue: "\(tab.title), workspace \(tabIndex + 1) of \(accessibilityWorkspaceCount)")
     }
 
     private func moveBy(_ delta: Int) {
-        let targetIndex = index + delta
-        guard targetIndex >= 0, targetIndex < tabManager.tabs.count else { return }
-        guard tabManager.reorderWorkspace(tabId: tab.id, toIndex: targetIndex) else { return }
+        guard tabManager.moveWorkspaceInSidebarOrder(tab.id, by: delta) else { return }
         selectedTabIds = [tab.id]
         lastSidebarSelectionIndex = tabManager.tabs.firstIndex { $0.id == tab.id }
         tabManager.selectTab(tab)
@@ -10874,8 +11004,8 @@ private struct TabItemView: View, Equatable {
         let wasSelected = tabManager.selectedTabId == tab.id
 
         if isShift, let lastIndex = lastSidebarSelectionIndex {
-            let lower = min(lastIndex, index)
-            let upper = max(lastIndex, index)
+            let lower = min(lastIndex, tabIndex)
+            let upper = max(lastIndex, tabIndex)
             let rangeIds = tabManager.tabs[lower...upper].map { $0.id }
             if isCommand {
                 selectedTabIds.formUnion(rangeIds)
@@ -10892,7 +11022,7 @@ private struct TabItemView: View, Equatable {
             selectedTabIds = [tab.id]
         }
 
-        lastSidebarSelectionIndex = index
+        lastSidebarSelectionIndex = tabIndex
         tabManager.selectTab(tab)
         if wasSelected, !isCommand, !isShift {
             tabManager.dismissNotificationOnDirectInteraction(
@@ -10954,8 +11084,7 @@ private struct TabItemView: View, Equatable {
     }
 
     private func syncSelectionAfterMutation() {
-        let existingIds = Set(tabManager.tabs.map { $0.id })
-        selectedTabIds = selectedTabIds.filter { existingIds.contains($0) }
+        selectedTabIds = selectedTabIds.filter { tabManager.isKnownSidebarItemId($0) }
         if selectedTabIds.isEmpty, let selectedId = tabManager.selectedTabId {
             selectedTabIds = [selectedId]
         }
@@ -11563,6 +11692,261 @@ private struct SidebarMetadataMarkdownBlockRow: View {
     }
 }
 
+// MARK: - Sidebar Indent Guides
+
+/// VS Code-style vertical indent guide lines for nested folder items.
+private struct SidebarIndentGuides: View {
+    let depth: Int
+    let indentWidth: CGFloat = 16
+
+    var body: some View {
+        if depth > 0 {
+            ZStack(alignment: .leading) {
+                ForEach(0..<depth, id: \.self) { level in
+                    Rectangle()
+                        .fill(Color.primary.opacity(0.1))
+                        .frame(width: 1)
+                        .offset(x: CGFloat(level) * indentWidth + 10)
+                }
+            }
+            .frame(maxHeight: .infinity)
+        }
+    }
+}
+
+// MARK: - Sidebar Folder Header
+
+private struct SidebarFolderHeaderView: View {
+    let folder: SidebarFolder
+    let depth: Int
+    let folderStore: SidebarFolderStore
+    let tabManager: TabManager
+    let dragAutoScrollController: SidebarDragAutoScrollController
+    @Binding var draggedTabId: UUID?
+    @Binding var dropIndicator: SidebarDropIndicator?
+    @Binding var selectedTabIds: Set<UUID>
+    @State private var isHovering = false
+
+    private var isSelected: Bool {
+        selectedTabIds.contains(folder.id)
+    }
+
+    private var childWorkspaceCount: Int {
+        SidebarTreeUtils.allWorkspaceIds(in: folder.children).count
+    }
+
+    private var isDropTarget: Bool {
+        guard let indicator = dropIndicator else { return false }
+        return indicator.tabId == folder.id && indicator.isIntoFolder
+    }
+
+    private var subtitleText: String {
+        if let desc = folder.description, !desc.isEmpty { return desc }
+        let childIds = SidebarTreeUtils.allWorkspaceIds(in: folder.children)
+        if childIds.isEmpty { return String(localized: "folder.empty", defaultValue: "Empty") }
+        let names = childIds.compactMap { id in
+            tabManager.tabs.first(where: { $0.id == id })?.title
+        }
+        if names.isEmpty { return String(localized: "folder.empty", defaultValue: "Empty") }
+        return names.joined(separator: ", ")
+    }
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 6) {
+            Image(systemName: folder.isCollapsed ? "chevron.right" : "chevron.down")
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 12)
+            Image(systemName: "folder.fill")
+                .font(.system(size: 20))
+                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 4) {
+                    Text(folder.name)
+                        .font(.system(size: 12, weight: .medium))
+                        .lineLimit(1)
+                        .foregroundStyle(.primary.opacity(0.8))
+                    Spacer()
+                    Text("\(childWorkspaceCount)")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.tertiary)
+                }
+                Text(subtitleText)
+                    .font(.system(size: 10))
+                    .lineLimit(1)
+                    .foregroundStyle(.tertiary)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.leading, CGFloat(depth) * 16 + 10)
+        .padding(.trailing, 10)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(isDropTarget ? cmuxAccentColor().opacity(0.2) : Color.clear)
+        )
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(isSelected ? cmuxAccentColor().opacity(0.25) : Color.clear)
+        )
+        .contentShape(Rectangle())
+        .simultaneousGesture(TapGesture().modifiers(.command).onEnded {
+            // Cmd+click: toggle folder in multi-selection
+            if selectedTabIds.contains(folder.id) {
+                selectedTabIds.remove(folder.id)
+            } else {
+                selectedTabIds.insert(folder.id)
+            }
+        })
+        .onTapGesture {
+            let modifiers = NSEvent.modifierFlags.intersection(.deviceIndependentFlagsMask)
+            guard modifiers.isEmpty else { return }
+            folderStore.toggleCollapse(folderId: folder.id)
+        }
+        .onHover { hovering in
+            isHovering = hovering
+        }
+        .contextMenu {
+            Button(String(localized: "contextMenu.renameFolder", defaultValue: "Rename Folder")) {
+                promptRenameFolder()
+            }
+            Button(folder.isCollapsed
+                   ? String(localized: "contextMenu.expandFolder", defaultValue: "Expand Folder")
+                   : String(localized: "contextMenu.collapseFolder", defaultValue: "Collapse Folder")) {
+                folderStore.toggleCollapse(folderId: folder.id)
+            }
+            // Group selected items into a new folder (if there's a selection)
+            let groupIds: [UUID] = {
+                var ids = selectedTabIds
+                ids.insert(folder.id)
+                return Array(ids)
+            }()
+            if groupIds.count > 1 {
+                Button(String(localized: "contextMenu.groupIntoFolder", defaultValue: "Group into Folder")) {
+                    let folderName = String(localized: "folder.defaultName", defaultValue: "New Folder")
+                    _ = tabManager.createSidebarFolder(name: folderName, containingItemIds: groupIds)
+                }
+                .keyboardShortcut("g", modifiers: .command)
+            }
+
+            Divider()
+            Button(String(localized: "contextMenu.deleteFolder", defaultValue: "Ungroup Folder")) {
+                tabManager.deleteSidebarFolder(folder.id)
+                selectedTabIds.remove(folder.id)
+            }
+        }
+        .onDrag {
+            draggedTabId = folder.id
+            dropIndicator = nil
+            return SidebarFolderDragPayload.provider(for: folder.id)
+        }
+        .onDrop(of: SidebarUnifiedDropDelegate.acceptedTypes + SidebarFolderDragPayload.dropContentTypes,
+                delegate: SidebarFolderDropDelegate(
+            folderId: folder.id,
+            folderStore: folderStore,
+            tabManager: tabManager,
+            draggedTabId: $draggedTabId,
+            dropIndicator: $dropIndicator
+        ))
+    }
+
+    private func promptRenameFolder() {
+        let alert = NSAlert()
+        alert.messageText = String(localized: "alert.renameFolder.title", defaultValue: "Rename Folder")
+        alert.informativeText = String(localized: "alert.renameFolder.message", defaultValue: "Enter a new name for this folder.")
+        let input = NSTextField(string: folder.name)
+        input.placeholderString = String(localized: "alert.renameFolder.placeholder", defaultValue: "Folder name")
+        input.frame = NSRect(x: 0, y: 0, width: 240, height: 22)
+        alert.accessoryView = input
+        alert.addButton(withTitle: String(localized: "alert.renameFolder.rename", defaultValue: "Rename"))
+        alert.addButton(withTitle: String(localized: "alert.renameFolder.cancel", defaultValue: "Cancel"))
+        let alertWindow = alert.window
+        alertWindow.initialFirstResponder = input
+        DispatchQueue.main.async {
+            alertWindow.makeFirstResponder(input)
+            input.selectText(nil)
+        }
+        let response = alert.runModal()
+        guard response == .alertFirstButtonReturn else { return }
+        let trimmed = input.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        folderStore.renameFolder(id: folder.id, name: trimmed)
+    }
+}
+
+private enum SidebarFolderDragPayload {
+    static let typeIdentifier = "com.cmux.sidebar-folder-drag"
+    static let dropContentType = UTType(exportedAs: typeIdentifier)
+    static let dropContentTypes: [UTType] = [dropContentType]
+    private static let prefix = "cmux.sidebar-folder."
+
+    static func provider(for folderId: UUID) -> NSItemProvider {
+        let provider = NSItemProvider()
+        let payload = "\(prefix)\(folderId.uuidString)"
+        provider.registerDataRepresentation(forTypeIdentifier: typeIdentifier, visibility: .ownProcess) { completion in
+            completion(payload.data(using: .utf8), nil)
+            return nil
+        }
+        return provider
+    }
+}
+
+/// Drop delegate for folder headers — accepts workspaces and folders dropped onto folders.
+private struct SidebarFolderDropDelegate: DropDelegate {
+    let folderId: UUID
+    let folderStore: SidebarFolderStore
+    let tabManager: TabManager
+    @Binding var draggedTabId: UUID?
+    @Binding var dropIndicator: SidebarDropIndicator?
+
+    func validateDrop(info: DropInfo) -> Bool {
+        guard let draggedTabId else { return false }
+        // Don't allow dropping onto self
+        if draggedTabId == folderId { return false }
+        // Don't allow a folder to be dropped into its own descendant
+        if SidebarTreeUtils.isDescendant(folderId, of: draggedTabId, in: folderStore.root) { return false }
+
+        // Accept sidebar tab drags or folder drags
+        if info.hasItemsConforming(to: SidebarTabDragPayload.dropContentTypes) { return true }
+        if info.hasItemsConforming(to: SidebarFolderDragPayload.dropContentTypes) { return true }
+        // Accept bonsplit tab drags
+        if info.hasItemsConforming(to: BonsplitTabDragPayload.dropContentTypes),
+           BonsplitTabDragPayload.currentTransfer() != nil {
+            return true
+        }
+        return false
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        if draggedTabId != nil {
+            dropIndicator = SidebarDropIndicator(tabId: folderId, edge: .bottom, isIntoFolder: true)
+        }
+        return DropProposal(operation: .move)
+    }
+
+    func dropExited(info: DropInfo) {
+        if dropIndicator?.tabId == folderId && dropIndicator?.isIntoFolder == true {
+            dropIndicator = nil
+        }
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        defer { dropIndicator = nil }
+
+        // Handle workspace or folder into folder drop
+        if let draggedTabId,
+           (info.hasItemsConforming(to: SidebarTabDragPayload.dropContentTypes) ||
+            info.hasItemsConforming(to: SidebarFolderDragPayload.dropContentTypes)) {
+            self.draggedTabId = nil
+            if draggedTabId == folderId { return false }
+            tabManager.moveSidebarItem(draggedTabId, toParent: folderId, atIndex: Int.max)
+            return true
+        }
+
+        return false
+    }
+}
+
 enum SidebarDropEdge {
     case top
     case bottom
@@ -11571,6 +11955,7 @@ enum SidebarDropEdge {
 struct SidebarDropIndicator {
     let tabId: UUID?
     let edge: SidebarDropEdge
+    var isIntoFolder: Bool = false
 }
 
 enum SidebarDropPlanner {
@@ -11904,59 +12289,9 @@ private enum BonsplitTabDragPayload {
     }
 }
 
-private struct SidebarBonsplitTabDropDelegate: DropDelegate {
-    let targetWorkspaceId: UUID
-    let tabManager: TabManager
-    @Binding var selectedTabIds: Set<UUID>
-    @Binding var lastSidebarSelectionIndex: Int?
+private struct SidebarUnifiedDropDelegate: DropDelegate {
+    static let acceptedTypes: [UTType] = SidebarTabDragPayload.dropContentTypes + BonsplitTabDragPayload.dropContentTypes + SidebarFolderDragPayload.dropContentTypes
 
-    func validateDrop(info: DropInfo) -> Bool {
-        guard info.hasItemsConforming(to: [BonsplitTabDragPayload.typeIdentifier]) else { return false }
-        return BonsplitTabDragPayload.currentTransfer() != nil
-    }
-
-    func dropUpdated(info: DropInfo) -> DropProposal? {
-        guard validateDrop(info: info) else { return nil }
-        return DropProposal(operation: .move)
-    }
-
-    func performDrop(info: DropInfo) -> Bool {
-        guard validateDrop(info: info),
-              let transfer = BonsplitTabDragPayload.currentTransfer(),
-              let app = AppDelegate.shared else {
-            return false
-        }
-
-        if let source = app.locateBonsplitSurface(tabId: transfer.tab.id),
-           source.workspaceId == targetWorkspaceId {
-            syncSidebarSelection()
-            return true
-        }
-
-        guard app.moveBonsplitTab(
-            tabId: transfer.tab.id,
-            toWorkspace: targetWorkspaceId,
-            focus: true,
-            focusWindow: true
-        ) else {
-            return false
-        }
-
-        selectedTabIds = [targetWorkspaceId]
-        syncSidebarSelection()
-        return true
-    }
-
-    private func syncSidebarSelection() {
-        if let selectedId = tabManager.selectedTabId {
-            lastSidebarSelectionIndex = tabManager.tabs.firstIndex { $0.id == selectedId }
-        } else {
-            lastSidebarSelectionIndex = nil
-        }
-    }
-}
-
-private struct SidebarTabDropDelegate: DropDelegate {
     let targetTabId: UUID?
     let tabManager: TabManager
     @Binding var draggedTabId: UUID?
@@ -11965,8 +12300,22 @@ private struct SidebarTabDropDelegate: DropDelegate {
     let targetRowHeight: CGFloat?
     let dragAutoScrollController: SidebarDragAutoScrollController
     @Binding var dropIndicator: SidebarDropIndicator?
+    @Binding var bonsplitDropTargetId: UUID?
+
+    // MARK: - Drag type detection
+
+    private func isSidebarTabDrag(_ info: DropInfo) -> Bool {
+        info.hasItemsConforming(to: SidebarTabDragPayload.dropContentTypes) && draggedTabId != nil
+    }
+
+    private func isBonsplitTabDrag(_ info: DropInfo) -> Bool {
+        info.hasItemsConforming(to: BonsplitTabDragPayload.dropContentTypes) && BonsplitTabDragPayload.currentTransfer() != nil
+    }
+
+    // MARK: - DropDelegate
 
     func validateDrop(info: DropInfo) -> Bool {
+        if isBonsplitTabDrag(info) { return true }
         let hasType = info.hasItemsConforming(to: [SidebarTabDragPayload.typeIdentifier])
         let hasDrag = draggedTabId != nil
         #if DEBUG
@@ -11976,6 +12325,11 @@ private struct SidebarTabDropDelegate: DropDelegate {
     }
 
     func dropEntered(info: DropInfo) {
+        if isBonsplitTabDrag(info) {
+            bonsplitDropTargetId = targetTabId
+            return
+        }
+        guard isSidebarTabDrag(info) else { return }
         #if DEBUG
         dlog("sidebar.dropEntered target=\(targetTabId?.uuidString.prefix(5) ?? "end")")
         #endif
@@ -11984,6 +12338,10 @@ private struct SidebarTabDropDelegate: DropDelegate {
     }
 
     func dropExited(info: DropInfo) {
+        if bonsplitDropTargetId == targetTabId {
+            bonsplitDropTargetId = nil
+        }
+        guard isSidebarTabDrag(info) || isBonsplitTabDrag(info) else { return }
 #if DEBUG
         dlog("sidebar.dropExited target=\(targetTabId?.uuidString.prefix(5) ?? "end")")
 #endif
@@ -11992,9 +12350,33 @@ private struct SidebarTabDropDelegate: DropDelegate {
         }
     }
 
+    private func isInMergeZone(_ info: DropInfo) -> Bool {
+        guard let targetTabId, targetTabId != draggedTabId,
+              let height = targetRowHeight, height > 0 else { return false }
+        // Don't merge onto folders — only workspace-on-workspace
+        if tabManager.folderStore.folder(byId: targetTabId) != nil { return false }
+        let y = info.location.y
+        let topThreshold = height * 0.3
+        let bottomThreshold = height * 0.7
+        return y >= topThreshold && y <= bottomThreshold
+    }
+
     func dropUpdated(info: DropInfo) -> DropProposal? {
+        if isBonsplitTabDrag(info) {
+            bonsplitDropTargetId = targetTabId
+            return DropProposal(operation: .move)
+        }
+        guard isSidebarTabDrag(info) else { return nil }
         dragAutoScrollController.updateFromDragLocation()
-        updateDropIndicator(for: info)
+
+        // Middle zone = merge, show accent border
+        if isInMergeZone(info) {
+            dropIndicator = nil
+            bonsplitDropTargetId = targetTabId
+        } else {
+            bonsplitDropTargetId = nil
+            updateDropIndicator(for: info)
+        }
 #if DEBUG
         dlog(
             "sidebar.dropUpdated target=\(targetTabId?.uuidString.prefix(5) ?? "end") " +
@@ -12005,6 +12387,54 @@ private struct SidebarTabDropDelegate: DropDelegate {
     }
 
     func performDrop(info: DropInfo) -> Bool {
+        bonsplitDropTargetId = nil
+        // Dispatch: Bonsplit tab drops (cross-workspace panel move) take priority
+        if isBonsplitTabDrag(info) {
+            return performBonsplitTabDrop(info: info)
+        }
+        // Merge: workspace dropped in middle zone of another workspace
+        if isSidebarTabDrag(info), isInMergeZone(info), let targetTabId, let draggedTabId {
+            self.draggedTabId = nil
+            self.dropIndicator = nil
+            dragAutoScrollController.stop()
+            return AppDelegate.shared?.mergeWorkspace(
+                sourceWorkspaceId: draggedTabId,
+                into: targetTabId
+            ) ?? false
+        }
+        return performSidebarTabDrop(info: info)
+    }
+
+    // MARK: - Bonsplit tab drop (cross-workspace panel move)
+
+    private func performBonsplitTabDrop(info: DropInfo) -> Bool {
+        guard let targetTabId,
+              let transfer = BonsplitTabDragPayload.currentTransfer(),
+              let app = AppDelegate.shared else {
+            return false
+        }
+
+        if let source = app.locateBonsplitSurface(tabId: transfer.tab.id),
+           source.workspaceId == targetTabId {
+            syncSidebarSelection()
+            return true
+        }
+
+        guard app.moveBonsplitTab(
+            tabId: transfer.tab.id,
+            toWorkspace: targetTabId,
+            focus: false,
+            focusWindow: false
+        ) else {
+            return false
+        }
+
+        return true
+    }
+
+    // MARK: - Sidebar tab drop (workspace reorder)
+
+    private func performSidebarTabDrop(info: DropInfo) -> Bool {
         defer {
             draggedTabId = nil
             dropIndicator = nil
@@ -12019,40 +12449,44 @@ private struct SidebarTabDropDelegate: DropDelegate {
 #endif
             return false
         }
-        guard let fromIndex = tabManager.tabs.firstIndex(where: { $0.id == draggedTabId }) else {
+        // Use the visual flat item list for drop position calculation
+        let visibleIds = tabManager.folderStore.flatVisibleItems.map(\.id)
+        guard visibleIds.contains(draggedTabId) else {
 #if DEBUG
             dlog("sidebar.drop.abort reason=draggedTabMissing tab=\(draggedTabId.uuidString.prefix(5))")
 #endif
             return false
         }
-        let tabIds = tabManager.tabs.map(\.id)
-        guard let targetIndex = SidebarDropPlanner.targetIndex(
-            draggedTabId: draggedTabId,
-            targetTabId: targetTabId,
-            indicator: dropIndicator,
-            tabIds: tabIds
-        ) else {
-#if DEBUG
-            dlog(
-                "sidebar.drop.abort reason=noTargetIndex tab=\(draggedTabId.uuidString.prefix(5)) " +
-                "target=\(targetTabId?.uuidString.prefix(5) ?? "end") indicator=\(debugIndicator(dropIndicator))"
-            )
-#endif
-            return false
-        }
 
-        guard fromIndex != targetIndex else {
-#if DEBUG
-            dlog("sidebar.drop.noop from=\(fromIndex) to=\(targetIndex)")
-#endif
-            syncSidebarSelection()
-            return true
+        // Move in the folder tree based on drop target position
+        let edge = dropIndicator?.edge ?? .bottom
+        if let targetTabId {
+            let targetParent = tabManager.folderStore.parentFolderId(of: targetTabId)
+            // Find target's position in its parent's children
+            let parentItems: [SidebarItem]
+            if let targetParent, let folder = tabManager.folderStore.folder(byId: targetParent) {
+                parentItems = folder.children
+            } else {
+                parentItems = tabManager.folderStore.root
+            }
+            if let targetPos = parentItems.firstIndex(where: { $0.id == targetTabId }) {
+                let sourceParent = tabManager.folderStore.parentFolderId(of: draggedTabId)
+                let sourcePos = sourceParent == targetParent
+                    ? parentItems.firstIndex(where: { $0.id == draggedTabId })
+                    : nil
+                var insertAt = edge == .bottom ? targetPos + 1 : targetPos
+                if let sourcePos, sourcePos < targetPos {
+                    insertAt -= 1
+                }
+                tabManager.moveSidebarItem(draggedTabId, toParent: targetParent, atIndex: insertAt)
+            } else {
+                // Target not found in expected parent, move to root
+                tabManager.moveSidebarItem(draggedTabId, toParent: nil, atIndex: Int.max)
+            }
+        } else {
+            // Dropped at end (empty area)
+            tabManager.moveSidebarItem(draggedTabId, toParent: nil, atIndex: Int.max)
         }
-
-#if DEBUG
-        dlog("sidebar.drop.commit tab=\(draggedTabId.uuidString.prefix(5)) from=\(fromIndex) to=\(targetIndex)")
-#endif
-        _ = tabManager.reorderWorkspace(tabId: draggedTabId, toIndex: targetIndex)
         if let selectedId = tabManager.selectedTabId {
             selectedTabIds = [selectedId]
             syncSidebarSelection(preferredSelectedTabId: selectedId)
@@ -12063,12 +12497,14 @@ private struct SidebarTabDropDelegate: DropDelegate {
         return true
     }
 
+    // MARK: - Helpers
+
     private func updateDropIndicator(for info: DropInfo) {
-        let tabIds = tabManager.tabs.map(\.id)
+        let visibleIds = tabManager.folderStore.flatVisibleItems.map(\.id)
         dropIndicator = SidebarDropPlanner.indicator(
             draggedTabId: draggedTabId,
             targetTabId: targetTabId,
-            tabIds: tabIds,
+            tabIds: visibleIds,
             pointerY: targetTabId == nil ? nil : info.location.y,
             targetHeight: targetRowHeight
         )
@@ -12561,11 +12997,12 @@ private struct TitlebarLeadingInsetReader: NSViewRepresentable {
 private struct SidebarBackdrop: View {
     @AppStorage("sidebarTintOpacity") private var sidebarTintOpacity = 0.18
     @AppStorage("sidebarTintHex") private var sidebarTintHex = "#000000"
-    @AppStorage("sidebarMaterial") private var sidebarMaterial = SidebarMaterialOption.sidebar.rawValue
+    @AppStorage("sidebarMaterial") private var sidebarMaterial = SidebarMaterialOption.matchTerminal.rawValue
     @AppStorage("sidebarBlendMode") private var sidebarBlendMode = SidebarBlendModeOption.withinWindow.rawValue
     @AppStorage("sidebarState") private var sidebarState = SidebarStateOption.followWindow.rawValue
     @AppStorage("sidebarCornerRadius") private var sidebarCornerRadius = 0.0
     @AppStorage("sidebarBlurOpacity") private var sidebarBlurOpacity = 1.0
+    @State private var terminalThemeGeneration: UInt64 = 0
 
     var body: some View {
         let materialOption = SidebarMaterialOption(rawValue: sidebarMaterial)
@@ -12577,7 +13014,17 @@ private struct SidebarBackdrop: View {
         let useWindowLevelGlass = useLiquidGlass && blendingMode == .behindWindow
 
         return ZStack {
-            if let material = materialOption?.material {
+            if materialOption?.usesTerminalBackground == true {
+                let _ = terminalThemeGeneration
+                let bgColor = GhosttyApp.shared.defaultBackgroundColor
+                let alpha = CGFloat(GhosttyApp.shared.defaultBackgroundOpacity)
+                let effective = alpha >= 0.999 ? alpha : 1.0 - pow(1.0 - alpha, 2)
+                let sidebarColor = bgColor.darken(by: bgColor.isLightColor ? 0.08 : 0.04)
+                TitlebarLayerBackground(
+                    backgroundColor: sidebarColor,
+                    opacity: effective
+                )
+            } else if let material = materialOption?.material {
                 // When using liquidGlass + behindWindow, window handles glass + tint
                 // Sidebar is fully transparent
                 if !useWindowLevelGlass {
@@ -12599,11 +13046,15 @@ private struct SidebarBackdrop: View {
             // When material is none or useWindowLevelGlass, render nothing
         }
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        .onReceive(NotificationCenter.default.publisher(for: .ghosttyDefaultBackgroundDidChange)) { _ in
+            terminalThemeGeneration &+= 1
+        }
     }
 }
 
 enum SidebarMaterialOption: String, CaseIterable, Identifiable {
     case none
+    case matchTerminal
     case liquidGlass  // macOS 26+ NSGlassEffectView
     case sidebar
     case hudWindow
@@ -12622,6 +13073,7 @@ enum SidebarMaterialOption: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .none: return String(localized: "settings.material.none", defaultValue: "None")
+        case .matchTerminal: return String(localized: "settings.material.matchTerminal", defaultValue: "Match Terminal")
         case .liquidGlass: return String(localized: "settings.material.liquidGlass", defaultValue: "Liquid Glass (macOS 26+)")
         case .sidebar: return String(localized: "settings.material.sidebar", defaultValue: "Sidebar")
         case .hudWindow: return String(localized: "settings.material.hudWindow", defaultValue: "HUD Window")
@@ -12642,9 +13094,15 @@ enum SidebarMaterialOption: String, CaseIterable, Identifiable {
         self == .liquidGlass
     }
 
+    /// Returns true if this option should use the Ghostty terminal background color
+    var usesTerminalBackground: Bool {
+        self == .matchTerminal
+    }
+
     var material: NSVisualEffectView.Material? {
         switch self {
         case .none: return nil
+        case .matchTerminal: return nil
         case .liquidGlass: return .underWindowBackground  // Fallback material
         case .sidebar: return .sidebar
         case .hudWindow: return .hudWindow
@@ -12707,6 +13165,7 @@ enum SidebarStateOption: String, CaseIterable, Identifiable {
 }
 
 enum SidebarPresetOption: String, CaseIterable, Identifiable {
+    case matchTerminal
     case nativeSidebar
     case glassBehind
     case softBlur
@@ -12718,6 +13177,7 @@ enum SidebarPresetOption: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
+        case .matchTerminal: return String(localized: "settings.preset.matchTerminal", defaultValue: "Match Terminal")
         case .nativeSidebar: return String(localized: "settings.preset.nativeSidebar", defaultValue: "Native Sidebar")
         case .glassBehind: return String(localized: "settings.preset.raycastGray", defaultValue: "Raycast Gray")
         case .softBlur: return String(localized: "settings.preset.softBlur", defaultValue: "Soft Blur")
@@ -12729,6 +13189,7 @@ enum SidebarPresetOption: String, CaseIterable, Identifiable {
 
     var material: SidebarMaterialOption {
         switch self {
+        case .matchTerminal: return .matchTerminal
         case .nativeSidebar: return .sidebar
         case .glassBehind: return .sidebar
         case .softBlur: return .sidebar
@@ -12740,6 +13201,7 @@ enum SidebarPresetOption: String, CaseIterable, Identifiable {
 
     var blendMode: SidebarBlendModeOption {
         switch self {
+        case .matchTerminal: return .withinWindow
         case .nativeSidebar: return .withinWindow
         case .glassBehind: return .behindWindow
         case .softBlur: return .behindWindow
@@ -12751,6 +13213,7 @@ enum SidebarPresetOption: String, CaseIterable, Identifiable {
 
     var state: SidebarStateOption {
         switch self {
+        case .matchTerminal: return .followWindow
         case .nativeSidebar: return .followWindow
         case .glassBehind: return .active
         case .softBlur: return .active
@@ -12762,6 +13225,7 @@ enum SidebarPresetOption: String, CaseIterable, Identifiable {
 
     var tintHex: String {
         switch self {
+        case .matchTerminal: return "#000000"
         case .nativeSidebar: return "#000000"
         case .glassBehind: return "#000000"
         case .softBlur: return "#000000"
@@ -12773,6 +13237,7 @@ enum SidebarPresetOption: String, CaseIterable, Identifiable {
 
     var tintOpacity: Double {
         switch self {
+        case .matchTerminal: return 0.0
         case .nativeSidebar: return 0.18
         case .glassBehind: return 0.36
         case .softBlur: return 0.28
@@ -12784,6 +13249,7 @@ enum SidebarPresetOption: String, CaseIterable, Identifiable {
 
     var cornerRadius: Double {
         switch self {
+        case .matchTerminal: return 0.0
         case .nativeSidebar: return 0.0
         case .glassBehind: return 0.0
         case .softBlur: return 0.0
@@ -12795,6 +13261,7 @@ enum SidebarPresetOption: String, CaseIterable, Identifiable {
 
     var blurOpacity: Double {
         switch self {
+        case .matchTerminal: return 1.0
         case .nativeSidebar: return 1.0
         case .glassBehind: return 0.6
         case .softBlur: return 0.45

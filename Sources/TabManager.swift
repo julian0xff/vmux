@@ -634,6 +634,7 @@ class TabManager: ObservableObject {
     weak var window: NSWindow?
 
     @Published var tabs: [Workspace] = []
+    let folderStore = SidebarFolderStore()
     @Published private(set) var isWorkspaceCycleHot: Bool = false
     @Published private(set) var pendingBackgroundWorkspaceLoadIds: Set<UUID> = []
     @Published private(set) var debugPinnedWorkspaceLoadIds: Set<UUID> = []
@@ -740,6 +741,7 @@ class TabManager: ObservableObject {
     private var workspaceCycleGeneration: UInt64 = 0
     private var workspaceCycleCooldownTask: Task<Void, Never>?
     private var pendingWorkspaceUnfocusTarget: (tabId: UUID, panelId: UUID)?
+    private var sidebarSelectedItemIds: Set<UUID> = []
     private var sidebarSelectedWorkspaceIds: Set<UUID> = []
     var confirmCloseHandler: ((String, String, Bool) -> Bool)?
     private struct WorkspaceCreationSnapshot {
@@ -1001,6 +1003,7 @@ class TabManager: ObservableObject {
             updatedTabs.append(newWorkspace)
         }
         tabs = updatedTabs
+        insertWorkspaceIntoFolderTree(newWorkspace.id, orderedTabs: updatedTabs, at: insertIndex)
         if let explicitWorkingDirectory,
            let terminalPanel = newWorkspace.focusedTerminalPanel {
             scheduleInitialWorkspaceGitMetadataRefresh(
@@ -1039,6 +1042,148 @@ class TabManager: ObservableObject {
             }
         }
         return newWorkspace
+    }
+
+    /// Create a workspace from a template: apply layout, then send agent commands to each pane.
+    @discardableResult
+    func addWorkspaceFromTemplate(_ template: WorkspaceTemplate) -> Workspace {
+        let workspace = addWorkspace(
+            workingDirectory: template.workingDirectory,
+            select: true,
+            autoWelcomeIfNeeded: false
+        )
+        workspace.setCustomTitle(template.name)
+
+        let panelIds = workspace.applyTemplateLayout(template.layout)
+        let paneAgents = template.expandedPaneAgents()
+        let agents = WorkspaceTemplateSettings.agentDefinitions()
+
+        for (index, panelId) in panelIds.enumerated() {
+            guard index < paneAgents.count,
+                  let agentId = paneAgents[index],
+                  let agent = agents.first(where: { $0.id == agentId }) else { continue }
+            guard let panel = workspace.panels[panelId] as? TerminalPanel else { continue }
+            sendCommandWhenReady(agent.command + "\n", to: panel)
+        }
+
+        return workspace
+    }
+
+    func syncTabsToFolderTree() {
+        let treeOrder = folderStore.allWorkspaceIdsInTreeOrder
+        guard !treeOrder.isEmpty else { return }
+
+        let tabsById = Dictionary(uniqueKeysWithValues: tabs.map { ($0.id, $0) })
+        let treeIdSet = Set(treeOrder)
+        var reorderedTabs = treeOrder.compactMap { tabsById[$0] }
+        reorderedTabs.append(contentsOf: tabs.filter { !treeIdSet.contains($0.id) })
+        tabs = reorderedTabs
+    }
+
+    @discardableResult
+    func createSidebarFolder(
+        name: String,
+        containingItemIds: [UUID] = [],
+        atIndex: Int? = nil
+    ) -> UUID {
+        let normalizedItemIds = folderStore.normalizedGroupingSelection(from: containingItemIds)
+        let folderId = folderStore.createFolder(
+            name: name,
+            containingItemIds: normalizedItemIds.isEmpty ? containingItemIds : normalizedItemIds,
+            atIndex: atIndex
+        )
+        syncTabsToFolderTree()
+        return folderId
+    }
+
+    func moveSidebarItem(_ itemId: UUID, toParent parentFolderId: UUID?, atIndex index: Int) {
+        folderStore.moveItem(itemId, toParent: parentFolderId, atIndex: index)
+        syncTabsToFolderTree()
+    }
+
+    func moveSidebarItems(_ itemIds: [UUID], toParent parentFolderId: UUID?, atIndex index: Int = Int.max) {
+        for itemId in itemIds {
+            folderStore.moveItem(itemId, toParent: parentFolderId, atIndex: index)
+        }
+        syncTabsToFolderTree()
+    }
+
+    func deleteSidebarFolder(_ folderId: UUID) {
+        folderStore.deleteFolder(id: folderId)
+        syncTabsToFolderTree()
+    }
+
+    @discardableResult
+    func moveWorkspaceInSidebarOrder(_ workspaceId: UUID, by delta: Int) -> Bool {
+        let visibleIds = folderStore.visibleWorkspaceIds
+        guard let currentVisibleIndex = visibleIds.firstIndex(of: workspaceId) else { return false }
+
+        let targetVisibleIndex = currentVisibleIndex + delta
+        guard targetVisibleIndex >= 0, targetVisibleIndex < visibleIds.count else { return false }
+
+        return moveWorkspaceInSidebarOrder(
+            workspaceId,
+            nearWorkspace: visibleIds[targetVisibleIndex],
+            placeAfter: delta > 0
+        )
+    }
+
+    @discardableResult
+    func moveWorkspaceInSidebarOrder(
+        _ workspaceId: UUID,
+        nearWorkspace targetWorkspaceId: UUID,
+        placeAfter: Bool
+    ) -> Bool {
+        guard workspaceId != targetWorkspaceId else { return true }
+
+        let targetParent = folderStore.parentFolderId(of: targetWorkspaceId)
+        let parentItems = targetParent.flatMap { folderStore.folder(byId: $0)?.children } ?? folderStore.root
+        guard let targetPosition = parentItems.firstIndex(where: { $0.id == targetWorkspaceId }) else {
+            return false
+        }
+
+        let sourceParent = folderStore.parentFolderId(of: workspaceId)
+        let sourcePosition = sourceParent == targetParent
+            ? parentItems.firstIndex(where: { $0.id == workspaceId })
+            : nil
+
+        var insertAt = placeAfter ? targetPosition + 1 : targetPosition
+        if placeAfter, let sourcePosition, sourcePosition < targetPosition {
+            insertAt -= 1
+        }
+
+        moveSidebarItem(workspaceId, toParent: targetParent, atIndex: insertAt)
+        return true
+    }
+
+    private func insertWorkspaceIntoFolderTree(_ workspaceId: UUID, orderedTabs: [Workspace], at insertIndex: Int) {
+        if orderedTabs.count <= 1 {
+            folderStore.insertWorkspaceAtEnd(workspaceId)
+            return
+        }
+
+        let clampedIndex = max(0, min(insertIndex, orderedTabs.count - 1))
+        if clampedIndex == 0 {
+            folderStore.insertWorkspaceAtRoot(workspaceId, atIndex: 0)
+            return
+        }
+
+        let predecessorId = orderedTabs[clampedIndex - 1].id
+        folderStore.insertWorkspace(workspaceId, afterWorkspace: predecessorId)
+    }
+
+    private func sendCommandWhenReady(_ command: String, to panel: TerminalPanel, attempt: Int = 0) {
+        let maxAttempts = 120  // 6 seconds (splits take longer to init)
+        if panel.surface.surface != nil {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                panel.sendText(command)
+            }
+            return
+        }
+        guard attempt < maxAttempts else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+            self?.sendCommandWhenReady(command, to: panel, attempt: attempt + 1)
+        }
     }
 
     private func sendWelcomeWhenReady(to workspace: Workspace, attempt: Int = 0) {
@@ -1488,6 +1633,7 @@ class TabManager: ObservableObject {
         workspace.owningTabManager = nil
 
         tabs.remove(at: index)
+        folderStore.removeWorkspace(workspace.id)
 
         if selectedTabId == workspace.id {
             // Keep the "focused index" stable when possible:
@@ -1507,6 +1653,7 @@ class TabManager: ObservableObject {
         sidebarSelectedWorkspaceIds.remove(tabId)
 
         let removed = tabs.remove(at: index)
+        folderStore.removeWorkspace(tabId)
         unwireClosedBrowserTracking(for: removed)
         removed.owningTabManager = nil
         lastFocusedPanelByTab.removeValue(forKey: removed.id)
@@ -1534,6 +1681,7 @@ class TabManager: ObservableObject {
             return max(0, min(index, tabs.count))
         }()
         tabs.insert(workspace, at: insertIndex)
+        insertWorkspaceIntoFolderTree(workspace.id, orderedTabs: tabs, at: insertIndex)
         if select {
             selectedTabId = workspace.id
         }
@@ -1610,6 +1758,10 @@ class TabManager: ObservableObject {
     func setSidebarSelectedWorkspaceIds(_ workspaceIds: Set<UUID>) {
         let existingIds = Set(tabs.map(\.id))
         sidebarSelectedWorkspaceIds = workspaceIds.intersection(existingIds)
+    }
+
+    func setSidebarSelectedItemIds(_ itemIds: Set<UUID>) {
+        sidebarSelectedItemIds = itemIds.filter { isKnownSidebarItemId($0) }
     }
 
     func closeWorkspacesWithConfirmation(_ workspaceIds: [UUID], allowPinned: Bool) {
@@ -1741,6 +1893,37 @@ class TabManager: ObservableObject {
         tabs.compactMap { workspace in
             sidebarSelectedWorkspaceIds.contains(workspace.id) ? workspace.id : nil
         }
+    }
+
+    private func orderedSidebarSelectedItemIds() -> [UUID] {
+        let visibleItemIds = folderStore.flatVisibleItems.map(\.id)
+        let visibleSelection = visibleItemIds.filter { sidebarSelectedItemIds.contains($0) }
+        if !visibleSelection.isEmpty {
+            return visibleSelection
+        }
+
+        let allItemIds = SidebarTreeUtils.allItemIds(in: folderStore.root)
+        return allItemIds.filter { sidebarSelectedItemIds.contains($0) }
+    }
+
+    /// Returns the set of workspace IDs currently multi-selected in the sidebar,
+    /// falling back to the single selected workspace if no multi-selection.
+    func effectiveSidebarSelectionIds() -> [UUID] {
+        let ordered = orderedSidebarSelectedWorkspaceIds()
+        if !ordered.isEmpty { return ordered }
+        if let selectedTabId { return [selectedTabId] }
+        return []
+    }
+
+    func effectiveSidebarSelectionItemIds() -> [UUID] {
+        let ordered = orderedSidebarSelectedItemIds()
+        if !ordered.isEmpty { return ordered }
+        if let selectedTabId { return [selectedTabId] }
+        return []
+    }
+
+    func isKnownSidebarItemId(_ itemId: UUID) -> Bool {
+        tabs.contains(where: { $0.id == itemId }) || folderStore.containsItemId(itemId)
     }
 
     private func closeWorkspacesPlan(for workspaces: [Workspace]) -> CloseWorkspacesPlan {
@@ -4150,9 +4333,11 @@ extension TabManager {
         let selectedWorkspaceIndex = selectedTabId.flatMap { selectedTabId in
             tabs.firstIndex(where: { $0.id == selectedTabId })
         }
+        let folderTree = folderStore.hasFolders() ? folderStore.root : nil
         return SessionTabManagerSnapshot(
             selectedWorkspaceIndex: selectedWorkspaceIndex,
-            workspaces: workspaceSnapshots
+            workspaces: workspaceSnapshots,
+            folderTree: folderTree
         )
     }
 
@@ -4184,6 +4369,7 @@ extension TabManager {
             let ordinal = Self.nextPortOrdinal
             Self.nextPortOrdinal += 1
             let workspace = Workspace(
+                id: workspaceSnapshot.workspaceId ?? UUID(),
                 title: workspaceSnapshot.processTitle,
                 workingDirectory: workspaceSnapshot.currentDirectory,
                 portOrdinal: ordinal
@@ -4216,6 +4402,15 @@ extension TabManager {
         // never see an intermediate state with empty tabs or nil selection.
         tabs = newTabs
         selectedTabId = newSelectedId
+
+        // Restore folder tree from snapshot, then reconcile with actual workspace IDs.
+        let canRestoreFolderTree = snapshot.workspaces.allSatisfy { $0.workspaceId != nil }
+        if canRestoreFolderTree, let folderTree = snapshot.folderTree {
+            folderStore.root = folderTree
+        } else {
+            folderStore.root = []
+        }
+        folderStore.reconcile(withOrderedTabIds: newTabs.map(\.id))
 
         if let selectedTabId {
             NotificationCenter.default.post(
