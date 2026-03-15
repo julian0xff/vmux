@@ -74,13 +74,15 @@ struct SidebarFolder: Codable, Identifiable, Equatable, Sendable {
     let id: UUID
     var name: String
     var description: String?
+    var color: String?
     var isCollapsed: Bool
     var children: [SidebarItem]
 
-    init(id: UUID = UUID(), name: String, description: String? = nil, isCollapsed: Bool = false, children: [SidebarItem] = []) {
+    init(id: UUID = UUID(), name: String, description: String? = nil, color: String? = nil, isCollapsed: Bool = false, children: [SidebarItem] = []) {
         self.id = id
         self.name = name
         self.description = description
+        self.color = color
         self.isCollapsed = isCollapsed
         self.children = children
     }
@@ -293,6 +295,21 @@ enum SidebarTreeUtils {
         }
     }
 
+    /// Set the color of a folder by ID.
+    static func setFolderColor(folderId: UUID, color: String?, in items: inout [SidebarItem]) {
+        for i in items.indices {
+            if case .folder(var folder) = items[i] {
+                if folder.id == folderId {
+                    folder.color = color
+                    items[i] = .folder(folder)
+                    return
+                }
+                setFolderColor(folderId: folderId, color: color, in: &folder.children)
+                items[i] = .folder(folder)
+            }
+        }
+    }
+
     /// Rename a folder by ID.
     static func renameFolder(folderId: UUID, name: String, in items: inout [SidebarItem]) {
         for i in items.indices {
@@ -320,6 +337,27 @@ enum SidebarTreeUtils {
                 items[i] = .folder(folder)
             }
         }
+    }
+
+    /// Remove a folder and ALL its contents (children are NOT promoted).
+    /// Returns all workspace IDs that were inside the folder (recursively).
+    @discardableResult
+    static func removeFolderCompletely(folderId: UUID, in items: inout [SidebarItem]) -> [UUID] {
+        for i in items.indices {
+            if case .folder(let folder) = items[i], folder.id == folderId {
+                let workspaceIds = allWorkspaceIds(in: folder.children)
+                items.remove(at: i)
+                return workspaceIds
+            }
+            if case .folder(var folder) = items[i] {
+                let result = removeFolderCompletely(folderId: folderId, in: &folder.children)
+                if !result.isEmpty {
+                    items[i] = .folder(folder)
+                    return result
+                }
+            }
+        }
+        return []
     }
 
     /// Check if an item is a descendant of a folder (prevents drag cycles).

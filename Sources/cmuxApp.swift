@@ -3483,15 +3483,6 @@ struct SettingsView: View {
 
                         SettingsCardDivider()
 
-                        ThemePickerRow(
-                            selectedMode: appearanceMode,
-                            onSelect: { mode in
-                                appearanceMode = mode.rawValue
-                            }
-                        )
-
-                        SettingsCardDivider()
-
                         AppIconPickerRow(
                             selectedMode: appIconMode,
                             onSelect: { mode in

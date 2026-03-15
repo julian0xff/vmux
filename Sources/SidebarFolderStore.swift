@@ -94,9 +94,28 @@ final class SidebarFolderStore: ObservableObject {
         recomputeDerivedState()
     }
 
+    func setFolderColor(id: UUID, color: String?) {
+        SidebarTreeUtils.setFolderColor(folderId: id, color: color, in: &root)
+        recomputeDerivedState()
+    }
+
+    func insertWorkspaceIntoFolder(_ workspaceId: UUID, folderId: UUID) {
+        guard let folder = SidebarTreeUtils.findFolder(folderId, in: root) else { return }
+        let index = folder.children.count
+        SidebarTreeUtils.insertItem(.workspace(id: workspaceId), intoFolder: folderId, atIndex: index, in: &root)
+        recomputeDerivedState()
+    }
+
     func deleteFolder(id: UUID) {
         SidebarTreeUtils.deleteFolder(folderId: id, in: &root)
         recomputeDerivedState()
+    }
+
+    /// Remove a folder and ALL its contents. Returns workspace IDs to close.
+    func collectAndRemoveFolder(id: UUID) -> [UUID] {
+        let workspaceIds = SidebarTreeUtils.removeFolderCompletely(folderId: id, in: &root)
+        recomputeDerivedState()
+        return workspaceIds
     }
 
     func toggleCollapse(folderId: UUID) {
