@@ -414,14 +414,14 @@ enum SessionPersistenceStore {
             options: .regularExpression
         )
         return resolvedAppSupport
-            .appendingPathComponent("cmux", isDirectory: true)
+            .appendingPathComponent("vmux", isDirectory: true)
             .appendingPathComponent("session-\(safeBundleId).json", isDirectory: false)
     }
 }
 
 enum SessionScrollbackReplayStore {
     static let environmentKey = "CMUX_RESTORE_SCROLLBACK_FILE"
-    private static let directoryName = "cmux-session-scrollback"
+    private static let directoryName = "vmux-session-scrollback"
     private static let ansiEscape = "\u{001B}"
     private static let ansiReset = "\u{001B}[0m"
 

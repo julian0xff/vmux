@@ -51,7 +51,7 @@
 	<key>NSAppleScriptEnabled</key>
 	<true/>
 	<key>OSAScriptingDefinition</key>
-	<string>cmux.sdef</string>
+	<string>vmux.sdef</string>
 	<key>NSServices</key>
 	<array>
 		<dict>

@@ -65,7 +65,7 @@ enum SocketControlPasswordStore {
     static let fileName = "socket-control-password"
     private static let keychainMigrationDefaultsKey = "socketControlPasswordMigrationVersion"
     private static let keychainMigrationVersion = 1
-    private static let legacyKeychainService = "com.cmuxterm.app.socket-control"
+    private static let legacyKeychainService = "com.vmuxterm.app.socket-control"
     private static let legacyKeychainAccount = "local-socket-password"
     private struct LazyKeychainFallbackCache {
         var hasLoaded = false
@@ -292,12 +292,12 @@ struct SocketControlSettings {
     static let allowSocketPathOverrideKey = "CMUX_ALLOW_SOCKET_OVERRIDE"
     static let socketPasswordEnvKey = "CMUX_SOCKET_PASSWORD"
     static let launchTagEnvKey = "CMUX_TAG"
-    static let baseDebugBundleIdentifier = "com.cmuxterm.app.debug"
+    static let baseDebugBundleIdentifier = "com.vmuxterm.app.debug"
     private static let socketDirectoryName = "vmux"
-    private static let stableSocketFileName = "cmux.sock"
+    private static let stableSocketFileName = "vmux.sock"
     private static let lastSocketPathFileName = "last-socket-path"
-    static let legacyStableDefaultSocketPath = "/tmp/cmux.sock"
-    static let legacyLastSocketPathFile = "/tmp/cmux-last-socket-path"
+    static let legacyStableDefaultSocketPath = "/tmp/vmux.sock"
+    static let legacyLastSocketPathFile = "/tmp/vmux-last-socket-path"
 
     static var stableDefaultSocketPath: String {
         stableSocketFileURL()?.path ?? legacyStableDefaultSocketPath
@@ -455,14 +455,14 @@ struct SocketControlSettings {
         currentUserID: uid_t = getuid(),
         probeStableDefaultPathEntry: (String) -> StableDefaultSocketPathEntry = inspectStableDefaultSocketPathEntry
     ) -> String {
-        if bundleIdentifier == "com.cmuxterm.app.nightly" {
-            return "/tmp/cmux-nightly.sock"
+        if bundleIdentifier == "com.vmuxterm.app.nightly" {
+            return "/tmp/vmux-nightly.sock"
         }
         if isDebugLikeBundleIdentifier(bundleIdentifier) || isDebugBuild {
-            return "/tmp/cmux-debug.sock"
+            return "/tmp/vmux-debug.sock"
         }
         if isStagingBundleIdentifier(bundleIdentifier) {
-            return "/tmp/cmux-staging.sock"
+            return "/tmp/vmux-staging.sock"
         }
         return resolvedStableDefaultSocketPath(
             currentUserID: currentUserID,
@@ -472,8 +472,8 @@ struct SocketControlSettings {
 
     static func userScopedStableSocketPath(currentUserID: uid_t = getuid()) -> String {
         stableSocketDirectoryURL()?
-            .appendingPathComponent("cmux-\(currentUserID).sock", isDirectory: false)
-            .path ?? "/tmp/cmux-\(currentUserID).sock"
+            .appendingPathComponent("vmux-\(currentUserID).sock", isDirectory: false)
+            .path ?? "/tmp/vmux-\(currentUserID).sock"
     }
 
     static func resolvedStableDefaultSocketPath(
@@ -514,14 +514,14 @@ struct SocketControlSettings {
 
     static func isDebugLikeBundleIdentifier(_ bundleIdentifier: String?) -> Bool {
         guard let bundleIdentifier else { return false }
-        return bundleIdentifier == "com.cmuxterm.app.debug"
-            || bundleIdentifier.hasPrefix("com.cmuxterm.app.debug.")
+        return bundleIdentifier == "com.vmuxterm.app.debug"
+            || bundleIdentifier.hasPrefix("com.vmuxterm.app.debug.")
     }
 
     static func isStagingBundleIdentifier(_ bundleIdentifier: String?) -> Bool {
         guard let bundleIdentifier else { return false }
-        return bundleIdentifier == "com.cmuxterm.app.staging"
-            || bundleIdentifier.hasPrefix("com.cmuxterm.app.staging.")
+        return bundleIdentifier == "com.vmuxterm.app.staging"
+            || bundleIdentifier.hasPrefix("com.vmuxterm.app.staging.")
     }
 
     static func stableSocketDirectoryURL(fileManager: FileManager = .default) -> URL? {
