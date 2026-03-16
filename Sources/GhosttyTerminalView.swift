@@ -1919,14 +1919,23 @@ class GhosttyApp {
                        workspace.agentPIDs["claude_code"] != nil {
                         return true
                     }
-                    let tabTitle = owningManager.titleForTab(tabId) ?? "Terminal"
+                    let workspace = owningManager.tabs.first(where: { $0.id == tabId })
+                    let tabTitle = workspace?.title ?? "Terminal"
                     let command = actionTitle.isEmpty ? tabTitle : actionTitle
                     let body = actionBody
                     let surfaceId = tabManager.focusedSurfaceId(for: tabId)
+                    var notificationTitle = command
+                    if let workspace, let surfaceId,
+                       workspace.panels.count > 1,
+                       let panelName = workspace.panelTitle(panelId: surfaceId),
+                       !panelName.isEmpty,
+                       panelName != tabTitle {
+                        notificationTitle = "\(tabTitle) — \(panelName)"
+                    }
                     TerminalNotificationStore.shared.addNotification(
                         tabId: tabId,
                         surfaceId: surfaceId,
-                        title: command,
+                        title: notificationTitle,
                         subtitle: "",
                         body: body
                     )
@@ -2197,13 +2206,22 @@ class GhosttyApp {
                    workspace.agentPIDs["claude_code"] != nil {
                     return
                 }
-                let tabTitle = owningManager?.titleForTab(tabId) ?? "Terminal"
+                let workspace = owningManager?.tabs.first(where: { $0.id == tabId })
+                let tabTitle = workspace?.title ?? "Terminal"
                 let command = actionTitle.isEmpty ? tabTitle : actionTitle
                 let body = actionBody
+                var notificationTitle = command
+                if let workspace, let surfaceId,
+                   workspace.panels.count > 1,
+                   let panelName = workspace.panelTitle(panelId: surfaceId),
+                   !panelName.isEmpty,
+                   panelName != tabTitle {
+                    notificationTitle = "\(tabTitle) — \(panelName)"
+                }
                 TerminalNotificationStore.shared.addNotification(
                     tabId: tabId,
                     surfaceId: surfaceId,
-                    title: command,
+                    title: notificationTitle,
                     subtitle: "",
                     body: body
                 )
