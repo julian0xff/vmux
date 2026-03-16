@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftTerm
 import AppKit
+import VmuxCore
 
 // Helper to create SwiftTerm Color from hex
 extension SwiftTerm.Color {

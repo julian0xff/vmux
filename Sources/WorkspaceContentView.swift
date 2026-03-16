@@ -2,6 +2,7 @@ import SwiftUI
 import Foundation
 import AppKit
 import Bonsplit
+import VmuxCore
 
 /// View that renders a Workspace's content using BonsplitView
 struct WorkspaceContentView: View {

@@ -1,8 +1,8 @@
 import Foundation
 import AppKit
 
-struct GhosttyConfig {
-    enum ColorSchemePreference: Hashable {
+public struct GhosttyConfig {
+    public enum ColorSchemePreference: Hashable {
         case light
         case dark
     }
@@ -11,37 +11,39 @@ struct GhosttyConfig {
     private static let loadCacheLock = NSLock()
     private static var cachedConfigsByColorScheme: [ColorSchemePreference: GhosttyConfig] = [:]
 
-    var fontFamily: String = "Menlo"
-    var fontSize: CGFloat = 12
-    var theme: String?
-    var workingDirectory: String?
-    var scrollbackLimit: Int = 10000
-    var unfocusedSplitOpacity: Double = 0.7
-    var unfocusedSplitFill: NSColor?
-    var splitDividerColor: NSColor?
+    public var fontFamily: String = "Menlo"
+    public var fontSize: CGFloat = 12
+    public var theme: String?
+    public var workingDirectory: String?
+    public var scrollbackLimit: Int = 10000
+    public var unfocusedSplitOpacity: Double = 0.7
+    public var unfocusedSplitFill: NSColor?
+    public var splitDividerColor: NSColor?
 
     // Colors (from theme or config)
-    var backgroundColor: NSColor = NSColor(hex: "#272822")!
-    var backgroundOpacity: Double = 1.0
-    var foregroundColor: NSColor = NSColor(hex: "#fdfff1")!
-    var cursorColor: NSColor = NSColor(hex: "#c0c1b5")!
-    var cursorTextColor: NSColor = NSColor(hex: "#8d8e82")!
-    var selectionBackground: NSColor = NSColor(hex: "#57584f")!
-    var selectionForeground: NSColor = NSColor(hex: "#fdfff1")!
+    public var backgroundColor: NSColor = NSColor(hex: "#272822")!
+    public var backgroundOpacity: Double = 1.0
+    public var foregroundColor: NSColor = NSColor(hex: "#fdfff1")!
+    public var cursorColor: NSColor = NSColor(hex: "#c0c1b5")!
+    public var cursorTextColor: NSColor = NSColor(hex: "#8d8e82")!
+    public var selectionBackground: NSColor = NSColor(hex: "#57584f")!
+    public var selectionForeground: NSColor = NSColor(hex: "#fdfff1")!
 
     // Palette colors (0-15)
-    var palette: [Int: NSColor] = [:]
+    public var palette: [Int: NSColor] = [:]
 
-    var unfocusedSplitOverlayOpacity: Double {
+    public init() {}
+
+    public var unfocusedSplitOverlayOpacity: Double {
         let clamped = min(1.0, max(0.15, unfocusedSplitOpacity))
         return min(1.0, max(0.0, 1.0 - clamped))
     }
 
-    var unfocusedSplitOverlayFill: NSColor {
+    public var unfocusedSplitOverlayFill: NSColor {
         unfocusedSplitFill ?? backgroundColor
     }
 
-    var resolvedSplitDividerColor: NSColor {
+    public var resolvedSplitDividerColor: NSColor {
         if let splitDividerColor {
             return splitDividerColor
         }
@@ -50,7 +52,7 @@ struct GhosttyConfig {
         return backgroundColor.darken(by: isLightBackground ? 0.08 : 0.4)
     }
 
-    static func load(
+    public static func load(
         preferredColorScheme: ColorSchemePreference? = nil,
         useCache: Bool = true,
         loadFromDisk: (_ preferredColorScheme: ColorSchemePreference) -> GhosttyConfig = Self.loadFromDisk
@@ -67,7 +69,7 @@ struct GhosttyConfig {
         return loaded
     }
 
-    static func invalidateLoadCache() {
+    public static func invalidateLoadCache() {
         loadCacheLock.lock()
         cachedConfigsByColorScheme.removeAll()
         loadCacheLock.unlock()
@@ -86,6 +88,14 @@ struct GhosttyConfig {
         loadCacheLock.lock()
         cachedConfigsByColorScheme[colorScheme] = config
         loadCacheLock.unlock()
+    }
+
+    /// Check whether a bundle identifier looks like a debug build.
+    /// Inlined from SocketControlSettings to avoid pulling that dependency into VmuxCore.
+    private static func isDebugLikeBundleIdentifier(_ bundleIdentifier: String?) -> Bool {
+        guard let bundleIdentifier else { return false }
+        return bundleIdentifier == "com.vmuxterm.app.debug"
+            || bundleIdentifier.hasPrefix("com.vmuxterm.app.debug.")
     }
 
     private static func vmuxConfigPaths(
@@ -128,13 +138,13 @@ struct GhosttyConfig {
         if hasConfig(currentPaths) {
             return currentPaths
         }
-        if SocketControlSettings.isDebugLikeBundleIdentifier(currentBundleIdentifier) {
+        if isDebugLikeBundleIdentifier(currentBundleIdentifier) {
             return releasePaths
         }
         return []
     }
 
-    private static func loadFromDisk(preferredColorScheme: ColorSchemePreference) -> GhosttyConfig {
+    public static func loadFromDisk(preferredColorScheme: ColorSchemePreference) -> GhosttyConfig {
         var config = GhosttyConfig()
 
         // Match Ghostty's default load order on macOS.
@@ -164,7 +174,7 @@ struct GhosttyConfig {
         return config
     }
 
-    mutating func parse(_ contents: String) {
+    public mutating func parse(_ contents: String) {
         let lines = contents.components(separatedBy: .newlines)
         for line in lines {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
@@ -247,7 +257,7 @@ struct GhosttyConfig {
         }
     }
 
-    mutating func loadTheme(_ name: String) {
+    public mutating func loadTheme(_ name: String) {
         loadTheme(
             name,
             environment: ProcessInfo.processInfo.environment,
@@ -255,7 +265,7 @@ struct GhosttyConfig {
         )
     }
 
-    mutating func loadTheme(
+    public mutating func loadTheme(
         _ name: String,
         environment: [String: String],
         bundleResourceURL: URL?,
@@ -279,14 +289,14 @@ struct GhosttyConfig {
         }
     }
 
-    static func currentColorSchemePreference(
+    public static func currentColorSchemePreference(
         appAppearance: NSAppearance? = NSApp?.effectiveAppearance
     ) -> ColorSchemePreference {
         let bestMatch = appAppearance?.bestMatch(from: [.darkAqua, .aqua])
         return bestMatch == .darkAqua ? .dark : .light
     }
 
-    static func resolveThemeName(
+    public static func resolveThemeName(
         from rawThemeValue: String,
         preferredColorScheme: ColorSchemePreference
     ) -> String {
@@ -349,7 +359,7 @@ struct GhosttyConfig {
         return rawThemeValue.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    static func themeNameCandidates(from rawName: String) -> [String] {
+    public static func themeNameCandidates(from rawName: String) -> [String] {
         var candidates: [String] = []
         let compatibilityAliasGroups: [[String]] = [
             ["Solarized Light", "iTerm2 Solarized Light"],
@@ -401,7 +411,7 @@ struct GhosttyConfig {
         return candidates
     }
 
-    static func themeSearchPaths(
+    public static func themeSearchPaths(
         forThemeName themeName: String,
         environment: [String: String],
         bundleResourceURL: URL?
@@ -476,7 +486,7 @@ struct GhosttyConfig {
 }
 
 extension NSColor {
-    convenience init?(hex: String) {
+    public convenience init?(hex: String) {
         var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
         hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
 
@@ -497,11 +507,11 @@ extension NSColor {
         self.init(red: r, green: g, blue: b, alpha: 1.0)
     }
 
-    var isLightColor: Bool {
+    public var isLightColor: Bool {
         luminance > 0.5
     }
 
-    var luminance: Double {
+    public var luminance: Double {
         var r: CGFloat = 0
         var g: CGFloat = 0
         var b: CGFloat = 0
@@ -512,7 +522,7 @@ extension NSColor {
         return (0.299 * r) + (0.587 * g) + (0.114 * b)
     }
 
-    func darken(by amount: CGFloat) -> NSColor {
+    public func darken(by amount: CGFloat) -> NSColor {
         var h: CGFloat = 0
         var s: CGFloat = 0
         var b: CGFloat = 0
@@ -526,7 +536,7 @@ extension NSColor {
         )
     }
 
-    func lighten(by amount: CGFloat) -> NSColor {
+    public func lighten(by amount: CGFloat) -> NSColor {
         var h: CGFloat = 0
         var s: CGFloat = 0
         var b: CGFloat = 0

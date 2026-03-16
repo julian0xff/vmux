@@ -2,22 +2,22 @@ import Combine
 import Foundation
 
 @MainActor
-final class SidebarFolderStore: ObservableObject {
-    static let persistenceKey = "sidebarFolderTree"
+public final class SidebarFolderStore: ObservableObject {
+    public static let persistenceKey = "sidebarFolderTree"
 
-    @Published var root: [SidebarItem] = []
+    @Published public var root: [SidebarItem] = []
 
-    @Published private(set) var flatVisibleItems: [SidebarFlatItem] = []
-    @Published private(set) var visibleWorkspaceIds: [UUID] = []
-    @Published private(set) var allWorkspaceIdsInTreeOrder: [UUID] = []
+    @Published public private(set) var flatVisibleItems: [SidebarFlatItem] = []
+    @Published public private(set) var visibleWorkspaceIds: [UUID] = []
+    @Published public private(set) var allWorkspaceIdsInTreeOrder: [UUID] = []
 
-    init() {}
+    public init() {}
 
     // MARK: - Reconciliation
 
     /// Sync the folder tree with the current set of workspace IDs.
     /// Adds orphaned workspaces to root, removes stale references.
-    func reconcile(with tabIds: Set<UUID>) {
+    public func reconcile(with tabIds: Set<UUID>) {
         let treeIds = Set(SidebarTreeUtils.allWorkspaceIds(in: root))
 
         // Remove stale workspace references
@@ -41,7 +41,7 @@ final class SidebarFolderStore: ObservableObject {
     }
 
     /// Reconcile with ordered tab IDs, preserving their relative order for orphans.
-    func reconcile(withOrderedTabIds tabIds: [UUID]) {
+    public func reconcile(withOrderedTabIds tabIds: [UUID]) {
         let tabIdSet = Set(tabIds)
         let treeIds = Set(SidebarTreeUtils.allWorkspaceIds(in: root))
 
@@ -62,7 +62,7 @@ final class SidebarFolderStore: ObservableObject {
     // MARK: - Folder CRUD
 
     @discardableResult
-    func createFolder(name: String, containingItemIds: [UUID] = [], atIndex: Int? = nil) -> UUID {
+    public func createFolder(name: String, containingItemIds: [UUID] = [], atIndex: Int? = nil) -> UUID {
         let insertion = resolvedFolderInsertion(containingItemIds: containingItemIds, atIndex: atIndex)
 
         // Remove items from their current positions and collect them
@@ -89,36 +89,36 @@ final class SidebarFolderStore: ObservableObject {
         return folder.id
     }
 
-    func renameFolder(id: UUID, name: String) {
+    public func renameFolder(id: UUID, name: String) {
         SidebarTreeUtils.renameFolder(folderId: id, name: name, in: &root)
         recomputeDerivedState()
     }
 
-    func setFolderColor(id: UUID, color: String?) {
+    public func setFolderColor(id: UUID, color: String?) {
         SidebarTreeUtils.setFolderColor(folderId: id, color: color, in: &root)
         recomputeDerivedState()
     }
 
-    func insertWorkspaceIntoFolder(_ workspaceId: UUID, folderId: UUID) {
+    public func insertWorkspaceIntoFolder(_ workspaceId: UUID, folderId: UUID) {
         guard let folder = SidebarTreeUtils.findFolder(folderId, in: root) else { return }
         let index = folder.children.count
         SidebarTreeUtils.insertItem(.workspace(id: workspaceId), intoFolder: folderId, atIndex: index, in: &root)
         recomputeDerivedState()
     }
 
-    func deleteFolder(id: UUID) {
+    public func deleteFolder(id: UUID) {
         SidebarTreeUtils.deleteFolder(folderId: id, in: &root)
         recomputeDerivedState()
     }
 
     /// Remove a folder and ALL its contents. Returns workspace IDs to close.
-    func collectAndRemoveFolder(id: UUID) -> [UUID] {
+    public func collectAndRemoveFolder(id: UUID) -> [UUID] {
         let workspaceIds = SidebarTreeUtils.removeFolderCompletely(folderId: id, in: &root)
         recomputeDerivedState()
         return workspaceIds
     }
 
-    func toggleCollapse(folderId: UUID) {
+    public func toggleCollapse(folderId: UUID) {
         SidebarTreeUtils.toggleCollapse(folderId: folderId, in: &root)
         recomputeDerivedState()
     }
@@ -126,7 +126,7 @@ final class SidebarFolderStore: ObservableObject {
     // MARK: - Tree Mutation
 
     /// Move an item (workspace or folder) to a new position.
-    func moveItem(_ itemId: UUID, toParent parentFolderId: UUID?, atIndex index: Int) {
+    public func moveItem(_ itemId: UUID, toParent parentFolderId: UUID?, atIndex index: Int) {
         // Prevent dropping a folder into itself or its descendants
         if let parentFolderId, SidebarTreeUtils.isDescendant(parentFolderId, of: itemId, in: root) {
             return
@@ -138,23 +138,23 @@ final class SidebarFolderStore: ObservableObject {
         recomputeDerivedState()
     }
 
-    func removeWorkspace(_ workspaceId: UUID) {
+    public func removeWorkspace(_ workspaceId: UUID) {
         SidebarTreeUtils.removeWorkspace(workspaceId, from: &root)
         recomputeDerivedState()
     }
 
-    func insertWorkspaceAtEnd(_ workspaceId: UUID) {
+    public func insertWorkspaceAtEnd(_ workspaceId: UUID) {
         root.append(.workspace(id: workspaceId))
         recomputeDerivedState()
     }
 
-    func insertWorkspaceAtRoot(_ workspaceId: UUID, atIndex index: Int) {
+    public func insertWorkspaceAtRoot(_ workspaceId: UUID, atIndex index: Int) {
         let clamped = max(0, min(index, root.count))
         root.insert(.workspace(id: workspaceId), at: clamped)
         recomputeDerivedState()
     }
 
-    func insertWorkspace(_ workspaceId: UUID, afterWorkspace afterId: UUID) {
+    public func insertWorkspace(_ workspaceId: UUID, afterWorkspace afterId: UUID) {
         // Find the position of afterId and insert after it
         if insertWorkspaceAfter(workspaceId, afterId: afterId, in: &root) {
             recomputeDerivedState()
@@ -181,27 +181,27 @@ final class SidebarFolderStore: ObservableObject {
 
     // MARK: - Query
 
-    func folder(byId id: UUID) -> SidebarFolder? {
+    public func folder(byId id: UUID) -> SidebarFolder? {
         SidebarTreeUtils.findFolder(id, in: root)
     }
 
-    func parentFolderId(of itemId: UUID) -> UUID? {
+    public func parentFolderId(of itemId: UUID) -> UUID? {
         SidebarTreeUtils.parentFolderId(of: itemId, in: root)
     }
 
-    func allFolders() -> [SidebarFolder] {
+    public func allFolders() -> [SidebarFolder] {
         SidebarTreeUtils.allFolders(in: root)
     }
 
-    func hasFolders() -> Bool {
+    public func hasFolders() -> Bool {
         root.contains { $0.isFolder }
     }
 
-    func containsItemId(_ itemId: UUID) -> Bool {
+    public func containsItemId(_ itemId: UUID) -> Bool {
         SidebarTreeUtils.allItemIds(in: root).contains(itemId)
     }
 
-    func normalizedGroupingSelection(from itemIds: [UUID]) -> [UUID] {
+    public func normalizedGroupingSelection(from itemIds: [UUID]) -> [UUID] {
         let selectedIds = Set(itemIds)
         let orderedIds = SidebarTreeUtils.allItemIds(in: root)
 
@@ -213,12 +213,12 @@ final class SidebarFolderStore: ObservableObject {
 
     // MARK: - Persistence
 
-    func save(defaults: UserDefaults = .standard) {
+    public func save(defaults: UserDefaults = .standard) {
         guard let data = try? JSONEncoder().encode(root) else { return }
         defaults.set(data, forKey: Self.persistenceKey)
     }
 
-    func load(defaults: UserDefaults = .standard) {
+    public func load(defaults: UserDefaults = .standard) {
         guard let data = defaults.data(forKey: Self.persistenceKey),
               let decoded = try? JSONDecoder().decode([SidebarItem].self, from: data) else {
             return

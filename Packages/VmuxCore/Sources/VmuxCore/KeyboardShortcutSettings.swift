@@ -2,8 +2,8 @@ import AppKit
 import SwiftUI
 
 /// Stores customizable keyboard shortcuts (definitions + persistence).
-enum KeyboardShortcutSettings {
-    enum Action: String, CaseIterable, Identifiable {
+public enum KeyboardShortcutSettings {
+    public enum Action: String, CaseIterable, Identifiable {
         // Titlebar / primary UI
         case toggleSidebar
         case newTab
@@ -42,9 +42,9 @@ enum KeyboardShortcutSettings {
         case toggleBrowserDeveloperTools
         case showBrowserJavaScriptConsole
 
-        var id: String { rawValue }
+        public var id: String { rawValue }
 
-        var label: String {
+        public var label: String {
             switch self {
             case .toggleSidebar: return String(localized: "shortcut.toggleSidebar.label", defaultValue: "Toggle Sidebar")
             case .newTab: return String(localized: "shortcut.newWorkspace.label", defaultValue: "New Workspace")
@@ -79,7 +79,7 @@ enum KeyboardShortcutSettings {
             }
         }
 
-        var defaultsKey: String {
+        public var defaultsKey: String {
             switch self {
             case .toggleSidebar: return "shortcut.toggleSidebar"
             case .newTab: return "shortcut.newTab"
@@ -114,7 +114,7 @@ enum KeyboardShortcutSettings {
             }
         }
 
-        var defaultShortcut: StoredShortcut {
+        public var defaultShortcut: StoredShortcut {
             switch self {
             case .toggleSidebar:
                 return StoredShortcut(key: "b", command: true, shift: false, option: false, control: false)
@@ -145,13 +145,13 @@ enum KeyboardShortcutSettings {
             case .closeWorkspace:
                 return StoredShortcut(key: "w", command: true, shift: true, option: false, control: false)
             case .focusLeft:
-                return StoredShortcut(key: "←", command: true, shift: false, option: true, control: false)
+                return StoredShortcut(key: "\u{2190}", command: true, shift: false, option: true, control: false)
             case .focusRight:
-                return StoredShortcut(key: "→", command: true, shift: false, option: true, control: false)
+                return StoredShortcut(key: "\u{2192}", command: true, shift: false, option: true, control: false)
             case .focusUp:
-                return StoredShortcut(key: "↑", command: true, shift: false, option: true, control: false)
+                return StoredShortcut(key: "\u{2191}", command: true, shift: false, option: true, control: false)
             case .focusDown:
-                return StoredShortcut(key: "↓", command: true, shift: false, option: true, control: false)
+                return StoredShortcut(key: "\u{2193}", command: true, shift: false, option: true, control: false)
             case .splitRight:
                 return StoredShortcut(key: "d", command: true, shift: false, option: false, control: false)
             case .splitDown:
@@ -181,12 +181,12 @@ enum KeyboardShortcutSettings {
             }
         }
 
-        func tooltip(_ base: String) -> String {
+        public func tooltip(_ base: String) -> String {
             "\(base) (\(KeyboardShortcutSettings.shortcut(for: self).displayString))"
         }
     }
 
-    static func shortcut(for action: Action) -> StoredShortcut {
+    public static func shortcut(for action: Action) -> StoredShortcut {
         guard let data = UserDefaults.standard.data(forKey: action.defaultsKey),
               let shortcut = try? JSONDecoder().decode(StoredShortcut.self, from: data) else {
             return action.defaultShortcut
@@ -194,17 +194,17 @@ enum KeyboardShortcutSettings {
         return shortcut
     }
 
-    static func setShortcut(_ shortcut: StoredShortcut, for action: Action) {
+    public static func setShortcut(_ shortcut: StoredShortcut, for action: Action) {
         if let data = try? JSONEncoder().encode(shortcut) {
             UserDefaults.standard.set(data, forKey: action.defaultsKey)
         }
     }
 
-    static func resetShortcut(for action: Action) {
+    public static func resetShortcut(for action: Action) {
         UserDefaults.standard.removeObject(forKey: action.defaultsKey)
     }
 
-    static func resetAll() {
+    public static func resetAll() {
         for action in Action.allCases {
             resetShortcut(for: action)
         }
@@ -213,66 +213,74 @@ enum KeyboardShortcutSettings {
     // MARK: - Backwards-Compatible API (call-sites can migrate gradually)
 
     // Keys (used by debug socket command + UI tests)
-    static let focusLeftKey = Action.focusLeft.defaultsKey
-    static let focusRightKey = Action.focusRight.defaultsKey
-    static let focusUpKey = Action.focusUp.defaultsKey
-    static let focusDownKey = Action.focusDown.defaultsKey
+    public static let focusLeftKey = Action.focusLeft.defaultsKey
+    public static let focusRightKey = Action.focusRight.defaultsKey
+    public static let focusUpKey = Action.focusUp.defaultsKey
+    public static let focusDownKey = Action.focusDown.defaultsKey
 
     // Defaults (used by settings reset + recorder button initial title)
-    static let showNotificationsDefault = Action.showNotifications.defaultShortcut
-    static let jumpToUnreadDefault = Action.jumpToUnread.defaultShortcut
+    public static let showNotificationsDefault = Action.showNotifications.defaultShortcut
+    public static let jumpToUnreadDefault = Action.jumpToUnread.defaultShortcut
 
-    static func showNotificationsShortcut() -> StoredShortcut { shortcut(for: .showNotifications) }
-    static func setShowNotificationsShortcut(_ shortcut: StoredShortcut) { setShortcut(shortcut, for: .showNotifications) }
+    public static func showNotificationsShortcut() -> StoredShortcut { shortcut(for: .showNotifications) }
+    public static func setShowNotificationsShortcut(_ shortcut: StoredShortcut) { setShortcut(shortcut, for: .showNotifications) }
 
-    static func jumpToUnreadShortcut() -> StoredShortcut { shortcut(for: .jumpToUnread) }
-    static func setJumpToUnreadShortcut(_ shortcut: StoredShortcut) { setShortcut(shortcut, for: .jumpToUnread) }
+    public static func jumpToUnreadShortcut() -> StoredShortcut { shortcut(for: .jumpToUnread) }
+    public static func setJumpToUnreadShortcut(_ shortcut: StoredShortcut) { setShortcut(shortcut, for: .jumpToUnread) }
 
-    static func nextSidebarTabShortcut() -> StoredShortcut { shortcut(for: .nextSidebarTab) }
-    static func prevSidebarTabShortcut() -> StoredShortcut { shortcut(for: .prevSidebarTab) }
-    static func renameWorkspaceShortcut() -> StoredShortcut { shortcut(for: .renameWorkspace) }
-    static func closeWorkspaceShortcut() -> StoredShortcut { shortcut(for: .closeWorkspace) }
+    public static func nextSidebarTabShortcut() -> StoredShortcut { shortcut(for: .nextSidebarTab) }
+    public static func prevSidebarTabShortcut() -> StoredShortcut { shortcut(for: .prevSidebarTab) }
+    public static func renameWorkspaceShortcut() -> StoredShortcut { shortcut(for: .renameWorkspace) }
+    public static func closeWorkspaceShortcut() -> StoredShortcut { shortcut(for: .closeWorkspace) }
 
-    static func focusLeftShortcut() -> StoredShortcut { shortcut(for: .focusLeft) }
-    static func focusRightShortcut() -> StoredShortcut { shortcut(for: .focusRight) }
-    static func focusUpShortcut() -> StoredShortcut { shortcut(for: .focusUp) }
-    static func focusDownShortcut() -> StoredShortcut { shortcut(for: .focusDown) }
+    public static func focusLeftShortcut() -> StoredShortcut { shortcut(for: .focusLeft) }
+    public static func focusRightShortcut() -> StoredShortcut { shortcut(for: .focusRight) }
+    public static func focusUpShortcut() -> StoredShortcut { shortcut(for: .focusUp) }
+    public static func focusDownShortcut() -> StoredShortcut { shortcut(for: .focusDown) }
 
-    static func splitRightShortcut() -> StoredShortcut { shortcut(for: .splitRight) }
-    static func splitDownShortcut() -> StoredShortcut { shortcut(for: .splitDown) }
-    static func toggleSplitZoomShortcut() -> StoredShortcut { shortcut(for: .toggleSplitZoom) }
-    static func splitBrowserRightShortcut() -> StoredShortcut { shortcut(for: .splitBrowserRight) }
-    static func splitBrowserDownShortcut() -> StoredShortcut { shortcut(for: .splitBrowserDown) }
+    public static func splitRightShortcut() -> StoredShortcut { shortcut(for: .splitRight) }
+    public static func splitDownShortcut() -> StoredShortcut { shortcut(for: .splitDown) }
+    public static func toggleSplitZoomShortcut() -> StoredShortcut { shortcut(for: .toggleSplitZoom) }
+    public static func splitBrowserRightShortcut() -> StoredShortcut { shortcut(for: .splitBrowserRight) }
+    public static func splitBrowserDownShortcut() -> StoredShortcut { shortcut(for: .splitBrowserDown) }
 
-    static func nextSurfaceShortcut() -> StoredShortcut { shortcut(for: .nextSurface) }
-    static func prevSurfaceShortcut() -> StoredShortcut { shortcut(for: .prevSurface) }
-    static func newSurfaceShortcut() -> StoredShortcut { shortcut(for: .newSurface) }
+    public static func nextSurfaceShortcut() -> StoredShortcut { shortcut(for: .nextSurface) }
+    public static func prevSurfaceShortcut() -> StoredShortcut { shortcut(for: .prevSurface) }
+    public static func newSurfaceShortcut() -> StoredShortcut { shortcut(for: .newSurface) }
 
-    static func openBrowserShortcut() -> StoredShortcut { shortcut(for: .openBrowser) }
-    static func toggleBrowserDeveloperToolsShortcut() -> StoredShortcut { shortcut(for: .toggleBrowserDeveloperTools) }
-    static func showBrowserJavaScriptConsoleShortcut() -> StoredShortcut { shortcut(for: .showBrowserJavaScriptConsole) }
+    public static func openBrowserShortcut() -> StoredShortcut { shortcut(for: .openBrowser) }
+    public static func toggleBrowserDeveloperToolsShortcut() -> StoredShortcut { shortcut(for: .toggleBrowserDeveloperTools) }
+    public static func showBrowserJavaScriptConsoleShortcut() -> StoredShortcut { shortcut(for: .showBrowserJavaScriptConsole) }
 }
 
 /// A keyboard shortcut that can be stored in UserDefaults
-struct StoredShortcut: Codable, Equatable {
-    var key: String
-    var command: Bool
-    var shift: Bool
-    var option: Bool
-    var control: Bool
+public struct StoredShortcut: Codable, Equatable {
+    public var key: String
+    public var command: Bool
+    public var shift: Bool
+    public var option: Bool
+    public var control: Bool
 
-    var displayString: String {
+    public init(key: String, command: Bool, shift: Bool, option: Bool, control: Bool) {
+        self.key = key
+        self.command = command
+        self.shift = shift
+        self.option = option
+        self.control = control
+    }
+
+    public var displayString: String {
         var parts: [String] = []
-        if control { parts.append("⌃") }
-        if option { parts.append("⌥") }
-        if shift { parts.append("⇧") }
-        if command { parts.append("⌘") }
+        if control { parts.append("\u{2303}") }
+        if option { parts.append("\u{2325}") }
+        if shift { parts.append("\u{21E7}") }
+        if command { parts.append("\u{2318}") }
         let keyText: String
         switch key {
         case "\t":
             keyText = "TAB"
         case "\r":
-            keyText = "↩"
+            keyText = "\u{21A9}"
         default:
             keyText = key.uppercased()
         }
@@ -280,7 +288,7 @@ struct StoredShortcut: Codable, Equatable {
         return parts.joined()
     }
 
-    var modifierFlags: NSEvent.ModifierFlags {
+    public var modifierFlags: NSEvent.ModifierFlags {
         var flags: NSEvent.ModifierFlags = []
         if command { flags.insert(.command) }
         if shift { flags.insert(.shift) }
@@ -289,15 +297,15 @@ struct StoredShortcut: Codable, Equatable {
         return flags
     }
 
-    var keyEquivalent: KeyEquivalent? {
+    public var keyEquivalent: KeyEquivalent? {
         switch key {
-        case "←":
+        case "\u{2190}":
             return .leftArrow
-        case "→":
+        case "\u{2192}":
             return .rightArrow
-        case "↑":
+        case "\u{2191}":
             return .upArrow
-        case "↓":
+        case "\u{2193}":
             return .downArrow
         case "\t":
             return .tab
@@ -310,7 +318,7 @@ struct StoredShortcut: Codable, Equatable {
         }
     }
 
-    var eventModifiers: EventModifiers {
+    public var eventModifiers: EventModifiers {
         var modifiers: EventModifiers = []
         if command {
             modifiers.insert(.command)
@@ -327,18 +335,18 @@ struct StoredShortcut: Codable, Equatable {
         return modifiers
     }
 
-    var menuItemKeyEquivalent: String? {
+    public var menuItemKeyEquivalent: String? {
         switch key {
-        case "←":
+        case "\u{2190}":
             guard let scalar = UnicodeScalar(NSLeftArrowFunctionKey) else { return nil }
             return String(Character(scalar))
-        case "→":
+        case "\u{2192}":
             guard let scalar = UnicodeScalar(NSRightArrowFunctionKey) else { return nil }
             return String(Character(scalar))
-        case "↑":
+        case "\u{2191}":
             guard let scalar = UnicodeScalar(NSUpArrowFunctionKey) else { return nil }
             return String(Character(scalar))
-        case "↓":
+        case "\u{2193}":
             guard let scalar = UnicodeScalar(NSDownArrowFunctionKey) else { return nil }
             return String(Character(scalar))
         case "\t":
@@ -352,7 +360,7 @@ struct StoredShortcut: Codable, Equatable {
         }
     }
 
-    static func from(event: NSEvent) -> StoredShortcut? {
+    public static func from(event: NSEvent) -> StoredShortcut? {
         guard let key = storedKey(from: event) else { return nil }
 
         // Some keys include extra flags depending on the responder chain.
@@ -377,10 +385,10 @@ struct StoredShortcut: Codable, Equatable {
     private static func storedKey(from event: NSEvent) -> String? {
         // Prefer keyCode mapping so shifted symbol keys (e.g. "}") record as "]".
         switch event.keyCode {
-        case 123: return "←" // left arrow
-        case 124: return "→" // right arrow
-        case 125: return "↓" // down arrow
-        case 126: return "↑" // up arrow
+        case 123: return "\u{2190}" // left arrow
+        case 124: return "\u{2192}" // right arrow
+        case 125: return "\u{2193}" // down arrow
+        case 126: return "\u{2191}" // up arrow
         case 48: return "\t" // tab
         case 36, 76: return "\r" // return, keypad enter
         case 33: return "["  // kVK_ANSI_LeftBracket
@@ -412,12 +420,17 @@ struct StoredShortcut: Codable, Equatable {
 }
 
 /// View for recording a keyboard shortcut
-struct KeyboardShortcutRecorder: View {
-    let label: String
-    @Binding var shortcut: StoredShortcut
+public struct KeyboardShortcutRecorder: View {
+    public let label: String
+    @Binding public var shortcut: StoredShortcut
     @State private var isRecording = false
 
-    var body: some View {
+    public init(label: String, shortcut: Binding<StoredShortcut>) {
+        self.label = label
+        self._shortcut = shortcut
+    }
+
+    public var body: some View {
         HStack {
             Text(label)
 
@@ -479,7 +492,7 @@ private class ShortcutRecorderNSButton: NSButton {
 
     func updateTitle() {
         if isRecording {
-            title = String(localized: "shortcut.pressShortcut.prompt", defaultValue: "Press shortcut…")
+            title = String(localized: "shortcut.pressShortcut.prompt", defaultValue: "Press shortcut\u{2026}")
         } else {
             title = shortcut.displayString
         }

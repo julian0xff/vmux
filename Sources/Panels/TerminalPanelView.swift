@@ -1,6 +1,7 @@
 import SwiftUI
 import Foundation
 import AppKit
+import VmuxCore
 
 /// View for rendering a terminal panel
 struct TerminalPanelView: View {

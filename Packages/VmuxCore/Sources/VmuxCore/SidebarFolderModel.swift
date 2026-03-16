@@ -3,28 +3,28 @@ import Foundation
 // MARK: - Sidebar Item Tree
 
 /// A node in the sidebar folder tree. Either a workspace reference or a folder containing children.
-indirect enum SidebarItem: Codable, Identifiable, Equatable, Sendable {
+public indirect enum SidebarItem: Codable, Identifiable, Equatable, Sendable {
     case workspace(id: UUID)
     case folder(SidebarFolder)
 
-    var id: UUID {
+    public var id: UUID {
         switch self {
         case .workspace(let id): return id
         case .folder(let folder): return folder.id
         }
     }
 
-    var isFolder: Bool {
+    public var isFolder: Bool {
         if case .folder = self { return true }
         return false
     }
 
-    var isWorkspace: Bool {
+    public var isWorkspace: Bool {
         if case .workspace = self { return true }
         return false
     }
 
-    var folder: SidebarFolder? {
+    public var folder: SidebarFolder? {
         if case .folder(let f) = self { return f }
         return nil
     }
@@ -37,7 +37,7 @@ indirect enum SidebarItem: Codable, Identifiable, Equatable, Sendable {
         case folder
     }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let type = try container.decode(String.self, forKey: .type)
         switch type {
@@ -55,7 +55,7 @@ indirect enum SidebarItem: Codable, Identifiable, Equatable, Sendable {
         }
     }
 
-    func encode(to encoder: Encoder) throws {
+    public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self {
         case .workspace(let id):
@@ -70,15 +70,15 @@ indirect enum SidebarItem: Codable, Identifiable, Equatable, Sendable {
 
 // MARK: - Sidebar Folder
 
-struct SidebarFolder: Codable, Identifiable, Equatable, Sendable {
-    let id: UUID
-    var name: String
-    var description: String?
-    var color: String?
-    var isCollapsed: Bool
-    var children: [SidebarItem]
+public struct SidebarFolder: Codable, Identifiable, Equatable, Sendable {
+    public let id: UUID
+    public var name: String
+    public var description: String?
+    public var color: String?
+    public var isCollapsed: Bool
+    public var children: [SidebarItem]
 
-    init(id: UUID = UUID(), name: String, description: String? = nil, color: String? = nil, isCollapsed: Bool = false, children: [SidebarItem] = []) {
+    public init(id: UUID = UUID(), name: String, description: String? = nil, color: String? = nil, isCollapsed: Bool = false, children: [SidebarItem] = []) {
         self.id = id
         self.name = name
         self.description = description
@@ -90,22 +90,28 @@ struct SidebarFolder: Codable, Identifiable, Equatable, Sendable {
 
 // MARK: - Flattened Sidebar Item (for rendering)
 
-struct SidebarFlatItem: Identifiable {
-    let id: UUID
-    let depth: Int
-    let content: SidebarFlatItemContent
+public struct SidebarFlatItem: Identifiable {
+    public let id: UUID
+    public let depth: Int
+    public let content: SidebarFlatItemContent
+
+    public init(id: UUID, depth: Int, content: SidebarFlatItemContent) {
+        self.id = id
+        self.depth = depth
+        self.content = content
+    }
 }
 
-enum SidebarFlatItemContent {
+public enum SidebarFlatItemContent {
     case workspace(visualIndex: Int)
     case folderHeader(SidebarFolder)
 }
 
 // MARK: - Tree Utilities
 
-enum SidebarTreeUtils {
+public enum SidebarTreeUtils {
     /// Collect all sidebar item UUIDs from the tree in depth-first order.
-    static func allItemIds(in items: [SidebarItem]) -> [UUID] {
+    public static func allItemIds(in items: [SidebarItem]) -> [UUID] {
         var result: [UUID] = []
         collectItemIds(items, into: &result)
         return result
@@ -121,7 +127,7 @@ enum SidebarTreeUtils {
     }
 
     /// Collect all workspace UUIDs from the tree in depth-first order.
-    static func allWorkspaceIds(in items: [SidebarItem]) -> [UUID] {
+    public static func allWorkspaceIds(in items: [SidebarItem]) -> [UUID] {
         var result: [UUID] = []
         collectWorkspaceIds(items, into: &result)
         return result
@@ -139,7 +145,7 @@ enum SidebarTreeUtils {
     }
 
     /// Collect visible workspace UUIDs (skipping collapsed folder children).
-    static func visibleWorkspaceIds(in items: [SidebarItem]) -> [UUID] {
+    public static func visibleWorkspaceIds(in items: [SidebarItem]) -> [UUID] {
         var result: [UUID] = []
         collectVisibleWorkspaceIds(items, into: &result)
         return result
@@ -159,7 +165,7 @@ enum SidebarTreeUtils {
     }
 
     /// Flatten the tree into a list of `SidebarFlatItem` for rendering (respects collapse state).
-    static func flattenVisible(_ items: [SidebarItem], depth: Int = 0) -> [SidebarFlatItem] {
+    public static func flattenVisible(_ items: [SidebarItem], depth: Int = 0) -> [SidebarFlatItem] {
         var result: [SidebarFlatItem] = []
         var visualIndex = 0
         flattenVisibleImpl(items, depth: depth, result: &result, visualIndex: &visualIndex)
@@ -188,7 +194,7 @@ enum SidebarTreeUtils {
 
     /// Remove a workspace from the tree by ID. Returns true if found and removed.
     @discardableResult
-    static func removeWorkspace(_ workspaceId: UUID, from items: inout [SidebarItem]) -> Bool {
+    public static func removeWorkspace(_ workspaceId: UUID, from items: inout [SidebarItem]) -> Bool {
         for i in items.indices.reversed() {
             switch items[i] {
             case .workspace(let id):
@@ -207,7 +213,7 @@ enum SidebarTreeUtils {
     }
 
     /// Remove an item (workspace or folder) from the tree by ID. Returns the removed item.
-    static func removeItem(_ itemId: UUID, from items: inout [SidebarItem]) -> SidebarItem? {
+    public static func removeItem(_ itemId: UUID, from items: inout [SidebarItem]) -> SidebarItem? {
         for i in items.indices.reversed() {
             if items[i].id == itemId {
                 return items.remove(at: i)
@@ -223,7 +229,7 @@ enum SidebarTreeUtils {
     }
 
     /// Find the parent folder ID for a given item ID. Returns nil if at root.
-    static func parentFolderId(of itemId: UUID, in items: [SidebarItem]) -> UUID? {
+    public static func parentFolderId(of itemId: UUID, in items: [SidebarItem]) -> UUID? {
         for item in items {
             if case .folder(let folder) = item {
                 for child in folder.children {
@@ -238,7 +244,7 @@ enum SidebarTreeUtils {
     }
 
     /// Find a folder by ID in the tree.
-    static func findFolder(_ folderId: UUID, in items: [SidebarItem]) -> SidebarFolder? {
+    public static func findFolder(_ folderId: UUID, in items: [SidebarItem]) -> SidebarFolder? {
         for item in items {
             if case .folder(let folder) = item {
                 if folder.id == folderId { return folder }
@@ -252,7 +258,7 @@ enum SidebarTreeUtils {
 
     /// Insert an item into a specific folder at a given index. If parentFolderId is nil, inserts at root.
     @discardableResult
-    static func insertItem(
+    public static func insertItem(
         _ item: SidebarItem,
         intoFolder parentFolderId: UUID?,
         atIndex index: Int,
@@ -281,7 +287,7 @@ enum SidebarTreeUtils {
     }
 
     /// Toggle collapse state of a folder by ID.
-    static func toggleCollapse(folderId: UUID, in items: inout [SidebarItem]) {
+    public static func toggleCollapse(folderId: UUID, in items: inout [SidebarItem]) {
         for i in items.indices {
             if case .folder(var folder) = items[i] {
                 if folder.id == folderId {
@@ -296,7 +302,7 @@ enum SidebarTreeUtils {
     }
 
     /// Set the color of a folder by ID.
-    static func setFolderColor(folderId: UUID, color: String?, in items: inout [SidebarItem]) {
+    public static func setFolderColor(folderId: UUID, color: String?, in items: inout [SidebarItem]) {
         for i in items.indices {
             if case .folder(var folder) = items[i] {
                 if folder.id == folderId {
@@ -311,7 +317,7 @@ enum SidebarTreeUtils {
     }
 
     /// Rename a folder by ID.
-    static func renameFolder(folderId: UUID, name: String, in items: inout [SidebarItem]) {
+    public static func renameFolder(folderId: UUID, name: String, in items: inout [SidebarItem]) {
         for i in items.indices {
             if case .folder(var folder) = items[i] {
                 if folder.id == folderId {
@@ -326,7 +332,7 @@ enum SidebarTreeUtils {
     }
 
     /// Delete a folder, promoting its children to the parent level.
-    static func deleteFolder(folderId: UUID, in items: inout [SidebarItem]) {
+    public static func deleteFolder(folderId: UUID, in items: inout [SidebarItem]) {
         for i in items.indices {
             if case .folder(let folder) = items[i], folder.id == folderId {
                 items.replaceSubrange(i...i, with: folder.children)
@@ -342,7 +348,7 @@ enum SidebarTreeUtils {
     /// Remove a folder and ALL its contents (children are NOT promoted).
     /// Returns all workspace IDs that were inside the folder (recursively).
     @discardableResult
-    static func removeFolderCompletely(folderId: UUID, in items: inout [SidebarItem]) -> [UUID] {
+    public static func removeFolderCompletely(folderId: UUID, in items: inout [SidebarItem]) -> [UUID] {
         for i in items.indices {
             if case .folder(let folder) = items[i], folder.id == folderId {
                 let workspaceIds = allWorkspaceIds(in: folder.children)
@@ -361,7 +367,7 @@ enum SidebarTreeUtils {
     }
 
     /// Check if an item is a descendant of a folder (prevents drag cycles).
-    static func isDescendant(_ itemId: UUID, of folderId: UUID, in items: [SidebarItem]) -> Bool {
+    public static func isDescendant(_ itemId: UUID, of folderId: UUID, in items: [SidebarItem]) -> Bool {
         guard let folder = findFolder(folderId, in: items) else { return false }
         return containsItem(itemId, in: folder.children)
     }
@@ -377,7 +383,7 @@ enum SidebarTreeUtils {
     }
 
     /// Collect all folder IDs from the tree.
-    static func allFolders(in items: [SidebarItem]) -> [SidebarFolder] {
+    public static func allFolders(in items: [SidebarItem]) -> [SidebarFolder] {
         var result: [SidebarFolder] = []
         collectFolders(items, into: &result)
         return result

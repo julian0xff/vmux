@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 import Darwin
 import Bonsplit
+import VmuxCore
 import UniformTypeIdentifiers
 
 @main

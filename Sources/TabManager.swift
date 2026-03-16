@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 import Foundation
 import Bonsplit
+import VmuxCore
 import CoreVideo
 import Combine
 

@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import Bonsplit
+import VmuxCore
 import CoreServices
 import UserNotifications
 import WebKit

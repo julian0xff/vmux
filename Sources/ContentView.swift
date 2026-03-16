@@ -12730,11 +12730,6 @@ private final class MiddleClickCaptureView: NSView {
     }
 }
 
-enum SidebarSelection {
-    case tabs
-    case notifications
-}
-
 private struct ClearScrollBackground: ViewModifier {
     func body(content: Content) -> some View {
         if #available(macOS 13.0, *) {
