@@ -2469,6 +2469,10 @@ class GhosttyApp {
     }
 }
 
+// MARK: - TerminalEngineProtocol Conformance
+
+extension GhosttyApp: TerminalEngineProtocol {}
+
 // MARK: - Debug Render Instrumentation
 
 /// Lightweight instrumentation to detect whether Ghostty is actually requesting Metal drawables.
@@ -5807,26 +5811,8 @@ struct GhosttyScrollbar {
     }
 }
 
-enum GhosttyNotificationKey {
-    static let scrollbar = "ghostty.scrollbar"
-    static let cellSize = "ghostty.cellSize"
-    static let tabId = "ghostty.tabId"
-    static let surfaceId = "ghostty.surfaceId"
-    static let title = "ghostty.title"
-    static let backgroundColor = "ghostty.backgroundColor"
-    static let backgroundOpacity = "ghostty.backgroundOpacity"
-    static let backgroundEventId = "ghostty.backgroundEventId"
-    static let backgroundSource = "ghostty.backgroundSource"
-}
-
-extension Notification.Name {
-    static let ghosttyDidUpdateScrollbar = Notification.Name("ghosttyDidUpdateScrollbar")
-    static let ghosttyDidUpdateCellSize = Notification.Name("ghosttyDidUpdateCellSize")
-    static let ghosttySearchFocus = Notification.Name("ghosttySearchFocus")
-    static let ghosttyConfigDidReload = Notification.Name("ghosttyConfigDidReload")
-    static let ghosttyDefaultBackgroundDidChange = Notification.Name("ghosttyDefaultBackgroundDidChange")
-    static let browserSearchFocus = Notification.Name("browserSearchFocus")
-}
+// GhosttyNotificationKey and Notification.Name extensions are defined in
+// VmuxCore/GhosttyNotifications.swift
 
 // MARK: - Scroll View Wrapper (Ghostty-style scrollbar)
 

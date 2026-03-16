@@ -5,6 +5,7 @@ import VmuxCore
 import VmuxSession
 import VmuxSocket
 import VmuxUpdate
+import VmuxTerminal
 import CoreServices
 import UserNotifications
 import WebKit
@@ -554,6 +555,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Register GhosttyApp as the terminal engine so other packages can access
+        // background color, opacity, config reload, and logging via protocol.
+        TerminalEngine.register(GhosttyApp.shared)
+
         // Wire VmuxUpdate closures to app-level services.
         updateController.userDriver.onRetryUpdateCheck = { [weak self] in
             self?.checkForUpdates(nil)

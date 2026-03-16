@@ -548,6 +548,7 @@
 					VS000002 /* VmuxSession */,
 					VK000002 /* VmuxSocket */,
 					VU000002 /* VmuxUpdate */,
+					VT000002 /* VmuxTerminal */,
 				);
 			name = GhosttyTabs;
 			productName = GhosttyTabs;
@@ -652,6 +653,7 @@
 					VS000001 /* XCLocalSwiftPackageReference "VmuxSession" */,
 					VK000001 /* XCLocalSwiftPackageReference "VmuxSocket" */,
 					VU000001 /* XCLocalSwiftPackageReference "VmuxUpdate" */,
+					VT000001 /* XCLocalSwiftPackageReference "VmuxTerminal" */,
 				);
 			productRefGroup = A5001042 /* Products */;
 			projectDirPath = "";
@@ -1095,6 +1097,10 @@
 				isa = XCLocalSwiftPackageReference;
 				relativePath = Packages/VmuxUpdate;
 			};
+			VT000001 /* XCLocalSwiftPackageReference "VmuxTerminal" */ = {
+				isa = XCLocalSwiftPackageReference;
+				relativePath = Packages/VmuxTerminal;
+			};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -1132,6 +1138,11 @@
 				isa = XCSwiftPackageProductDependency;
 				package = VU000001 /* XCLocalSwiftPackageReference "VmuxUpdate" */;
 				productName = VmuxUpdate;
+			};
+			VT000002 /* VmuxTerminal */ = {
+				isa = XCSwiftPackageProductDependency;
+				package = VT000001 /* XCLocalSwiftPackageReference "VmuxTerminal" */;
+				productName = VmuxTerminal;
 			};
 /* End XCSwiftPackageProductDependency section */
 
