@@ -11785,3 +11785,16 @@ extension NSColor {
         return String(format: "#%02X%02X%02X", redByte, greenByte, blueByte)
     }
 }
+
+private struct SidebarResizerAccessibilityModifier: ViewModifier {
+    let accessibilityIdentifier: String?
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if let accessibilityIdentifier {
+            content.accessibilityIdentifier(accessibilityIdentifier)
+        } else {
+            content
+        }
+    }
+}
