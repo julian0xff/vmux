@@ -850,15 +850,16 @@ final class TerminalNotificationStore: ObservableObject {
             return true
         }
 
-        let isActiveTab = AppDelegate.shared?.tabManager?.selectedTabId == tabId
-        let focusedSurfaceId = AppDelegate.shared?.tabManager?.focusedSurfaceId(for: tabId)
+        let owningManager = AppDelegate.shared?.tabManagerFor(tabId: tabId) ?? AppDelegate.shared?.tabManager
+        let isActiveTab = owningManager?.selectedTabId == tabId
+        let focusedSurfaceId = owningManager?.focusedSurfaceId(for: tabId)
         let isFocusedSurface = surfaceId == nil || focusedSurfaceId == surfaceId
         let isFocusedPanel = isActiveTab && isFocusedSurface
         let isAppFocused = AppFocusState.isAppFocused()
         let shouldSuppressExternalDelivery = isAppFocused && isFocusedPanel
 
-        if WorkspaceAutoReorderSettings.isEnabled() {
-            AppDelegate.shared?.tabManager?.moveTabToTopForNotification(tabId)
+        if !shouldSuppressExternalDelivery && WorkspaceAutoReorderSettings.isEnabled() {
+            owningManager?.moveTabToTopForNotification(tabId)
         }
 
         let notification = TerminalNotification(
@@ -869,7 +870,7 @@ final class TerminalNotificationStore: ObservableObject {
             subtitle: subtitle,
             body: body,
             createdAt: Date(),
-            isRead: false
+            isRead: shouldSuppressExternalDelivery
         )
         updated.insert(notification, at: 0)
         notifications = updated
