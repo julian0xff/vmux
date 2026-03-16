@@ -3,6 +3,7 @@ import SwiftUI
 import Darwin
 import Bonsplit
 import VmuxCore
+import VmuxSocket
 import UniformTypeIdentifiers
 
 @main

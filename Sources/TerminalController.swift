@@ -4,6 +4,7 @@ import Foundation
 import Bonsplit
 import WebKit
 import VmuxCore
+import VmuxSocket
 /// Unix socket-based controller for programmatic terminal control
 /// Allows automated testing and external control of terminal tabs
 @MainActor

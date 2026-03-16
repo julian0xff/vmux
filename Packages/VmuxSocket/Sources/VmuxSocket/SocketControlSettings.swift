@@ -4,7 +4,7 @@ import Foundation
 import Security
 #endif
 
-enum SocketControlMode: String, CaseIterable, Identifiable {
+public enum SocketControlMode: String, CaseIterable, Identifiable, Sendable {
     case off
     case vmuxOnly
     case automation
@@ -12,11 +12,11 @@ enum SocketControlMode: String, CaseIterable, Identifiable {
     /// Full open access (all local users/processes) with no ancestry or password gate.
     case allowAll
 
-    var id: String { rawValue }
+    public var id: String { rawValue }
 
-    static var uiCases: [SocketControlMode] { [.off, .vmuxOnly, .automation, .password, .allowAll] }
+    public static var uiCases: [SocketControlMode] { [.off, .vmuxOnly, .automation, .password, .allowAll] }
 
-    var displayName: String {
+    public var displayName: String {
         switch self {
         case .off:
             return String(localized: "socketControl.off.name", defaultValue: "Off")
@@ -31,7 +31,7 @@ enum SocketControlMode: String, CaseIterable, Identifiable {
         }
     }
 
-    var description: String {
+    public var description: String {
         switch self {
         case .off:
             return String(localized: "socketControl.off.description", defaultValue: "Disable the local control socket.")
@@ -46,7 +46,7 @@ enum SocketControlMode: String, CaseIterable, Identifiable {
         }
     }
 
-    var socketFilePermissions: UInt16 {
+    public var socketFilePermissions: UInt16 {
         switch self {
         case .allowAll:
             return 0o666
@@ -55,14 +55,14 @@ enum SocketControlMode: String, CaseIterable, Identifiable {
         }
     }
 
-    var requiresPasswordAuth: Bool {
+    public var requiresPasswordAuth: Bool {
         self == .password
     }
 }
 
-enum SocketControlPasswordStore {
-    static let directoryName = "vmux"
-    static let fileName = "socket-control-password"
+public enum SocketControlPasswordStore {
+    public static let directoryName = "vmux"
+    public static let fileName = "socket-control-password"
     private static let keychainMigrationDefaultsKey = "socketControlPasswordMigrationVersion"
     private static let keychainMigrationVersion = 1
     private static let legacyKeychainService = "com.vmuxterm.app.socket-control"
@@ -74,7 +74,7 @@ enum SocketControlPasswordStore {
     private static let lazyKeychainFallbackLock = NSLock()
     private static var lazyKeychainFallbackCache = LazyKeychainFallbackCache()
 
-    static func configuredPassword(
+    public static func configuredPassword(
         environment: [String: String] = ProcessInfo.processInfo.environment,
         fileURL: URL? = nil,
         allowLazyKeychainFallback: Bool = false,
@@ -98,7 +98,7 @@ enum SocketControlPasswordStore {
         return cachedLazyKeychainFallbackPassword(loadKeychainPassword: loadKeychainPassword)
     }
 
-    static func hasConfiguredPassword(
+    public static func hasConfiguredPassword(
         environment: [String: String] = ProcessInfo.processInfo.environment,
         fileURL: URL? = nil,
         allowLazyKeychainFallback: Bool = false,
@@ -113,7 +113,7 @@ enum SocketControlPasswordStore {
         return !configured.isEmpty
     }
 
-    static func verify(
+    public static func verify(
         password candidate: String,
         environment: [String: String] = ProcessInfo.processInfo.environment,
         fileURL: URL? = nil,
@@ -131,7 +131,7 @@ enum SocketControlPasswordStore {
         return expected == candidate
     }
 
-    static func migrateLegacyKeychainPasswordIfNeeded(
+    public static func migrateLegacyKeychainPasswordIfNeeded(
         defaults: UserDefaults = .standard,
         fileURL: URL? = nil,
         loadLegacyPassword: () -> String? = { loadLegacyPasswordFromKeychain() },
@@ -159,7 +159,7 @@ enum SocketControlPasswordStore {
         }
     }
 
-    static func loadPassword(fileURL: URL? = nil) throws -> String? {
+    public static func loadPassword(fileURL: URL? = nil) throws -> String? {
         guard let fileURL = fileURL ?? defaultPasswordFileURL() else {
             return nil
         }
@@ -173,7 +173,7 @@ enum SocketControlPasswordStore {
         return normalized(password)
     }
 
-    static func savePassword(_ password: String, fileURL: URL? = nil) throws {
+    public static func savePassword(_ password: String, fileURL: URL? = nil) throws {
         let normalized = password.trimmingCharacters(in: .newlines)
         if normalized.isEmpty {
             try clearPassword(fileURL: fileURL)
@@ -198,7 +198,7 @@ enum SocketControlPasswordStore {
         try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: fileURL.path)
     }
 
-    static func clearPassword(fileURL: URL? = nil) throws {
+    public static func clearPassword(fileURL: URL? = nil) throws {
         guard let fileURL = fileURL ?? defaultPasswordFileURL() else {
             return
         }
@@ -208,13 +208,13 @@ enum SocketControlPasswordStore {
         try FileManager.default.removeItem(at: fileURL)
     }
 
-    static func resetLazyKeychainFallbackCacheForTests() {
+    public static func resetLazyKeychainFallbackCacheForTests() {
         lazyKeychainFallbackLock.lock()
         lazyKeychainFallbackCache = LazyKeychainFallbackCache()
         lazyKeychainFallbackLock.unlock()
     }
 
-    static func defaultPasswordFileURL(
+    public static func defaultPasswordFileURL(
         appSupportDirectory: URL? = nil,
         fileManager: FileManager = .default
     ) -> URL? {
@@ -231,7 +231,7 @@ enum SocketControlPasswordStore {
             .appendingPathComponent(fileName, isDirectory: false)
     }
 
-    private static func loadLegacyPasswordFromKeychain() -> String? {
+    public static func loadLegacyPasswordFromKeychain() -> String? {
 #if canImport(Security)
         let query: [CFString: Any] = [
             kSecClass: kSecClassGenericPassword,
@@ -252,7 +252,7 @@ enum SocketControlPasswordStore {
 #endif
     }
 
-    private static func deleteLegacyPasswordFromKeychain() -> Bool {
+    public static func deleteLegacyPasswordFromKeychain() -> Bool {
 #if canImport(Security)
         let query: [CFString: Any] = [
             kSecClass: kSecClassGenericPassword,
@@ -286,28 +286,28 @@ enum SocketControlPasswordStore {
     }
 }
 
-struct SocketControlSettings {
-    static let appStorageKey = "socketControlMode"
-    static let legacyEnabledKey = "socketControlEnabled"
-    static let allowSocketPathOverrideKey = "VMUX_ALLOW_SOCKET_OVERRIDE"
-    static let socketPasswordEnvKey = "VMUX_SOCKET_PASSWORD"
-    static let launchTagEnvKey = "VMUX_TAG"
-    static let baseDebugBundleIdentifier = "com.vmuxterm.app.debug"
+public struct SocketControlSettings {
+    public static let appStorageKey = "socketControlMode"
+    public static let legacyEnabledKey = "socketControlEnabled"
+    public static let allowSocketPathOverrideKey = "VMUX_ALLOW_SOCKET_OVERRIDE"
+    public static let socketPasswordEnvKey = "VMUX_SOCKET_PASSWORD"
+    public static let launchTagEnvKey = "VMUX_TAG"
+    public static let baseDebugBundleIdentifier = "com.vmuxterm.app.debug"
     private static let socketDirectoryName = "vmux"
     private static let stableSocketFileName = "vmux.sock"
     private static let lastSocketPathFileName = "last-socket-path"
-    static let legacyStableDefaultSocketPath = "/tmp/vmux.sock"
-    static let legacyLastSocketPathFile = "/tmp/vmux-last-socket-path"
+    public static let legacyStableDefaultSocketPath = "/tmp/vmux.sock"
+    public static let legacyLastSocketPathFile = "/tmp/vmux-last-socket-path"
 
-    static var stableDefaultSocketPath: String {
+    public static var stableDefaultSocketPath: String {
         stableSocketFileURL()?.path ?? legacyStableDefaultSocketPath
     }
 
-    static var lastSocketPathFile: String {
+    public static var lastSocketPathFile: String {
         lastSocketPathFileURL()?.path ?? legacyLastSocketPathFile
     }
 
-    enum StableDefaultSocketPathEntry: Equatable {
+    public enum StableDefaultSocketPathEntry: Equatable, Sendable {
         case missing
         case socket(ownerUserID: uid_t)
         case other(ownerUserID: uid_t)
@@ -345,15 +345,15 @@ struct SocketControlSettings {
     }
 
     /// Map persisted values to the current enum values.
-    static func migrateMode(_ raw: String) -> SocketControlMode {
+    public static func migrateMode(_ raw: String) -> SocketControlMode {
         parseMode(raw) ?? defaultMode
     }
 
-    static var defaultMode: SocketControlMode {
+    public static var defaultMode: SocketControlMode {
         return .vmuxOnly
     }
 
-    private static var isDebugBuild: Bool {
+    public static var isDebugBuild: Bool {
 #if DEBUG
         true
 #else
@@ -361,7 +361,7 @@ struct SocketControlSettings {
 #endif
     }
 
-    static func launchTag(
+    public static func launchTag(
         environment: [String: String] = ProcessInfo.processInfo.environment
     ) -> String? {
         guard let raw = environment[launchTagEnvKey] else { return nil }
@@ -369,7 +369,7 @@ struct SocketControlSettings {
         return trimmed.isEmpty ? nil : trimmed
     }
 
-    static func shouldBlockUntaggedDebugLaunch(
+    public static func shouldBlockUntaggedDebugLaunch(
         environment: [String: String] = ProcessInfo.processInfo.environment,
         bundleIdentifier: String? = Bundle.main.bundleIdentifier,
         isDebugBuild: Bool = SocketControlSettings.isDebugBuild
@@ -400,7 +400,7 @@ struct SocketControlSettings {
         return launchTag(environment: environment) == nil
     }
 
-    static func isRunningUnderXCTest(environment: [String: String]) -> Bool {
+    public static func isRunningUnderXCTest(environment: [String: String]) -> Bool {
         let indicators = [
             "XCTestConfigurationFilePath",
             "XCTestBundlePath",
@@ -420,7 +420,7 @@ struct SocketControlSettings {
         return false
     }
 
-    static func socketPath(
+    public static func socketPath(
         environment: [String: String] = ProcessInfo.processInfo.environment,
         bundleIdentifier: String? = Bundle.main.bundleIdentifier,
         isDebugBuild: Bool = SocketControlSettings.isDebugBuild,
@@ -449,7 +449,7 @@ struct SocketControlSettings {
         return fallback
     }
 
-    static func defaultSocketPath(
+    public static func defaultSocketPath(
         bundleIdentifier: String?,
         isDebugBuild: Bool,
         currentUserID: uid_t = getuid(),
@@ -470,13 +470,13 @@ struct SocketControlSettings {
         )
     }
 
-    static func userScopedStableSocketPath(currentUserID: uid_t = getuid()) -> String {
+    public static func userScopedStableSocketPath(currentUserID: uid_t = getuid()) -> String {
         stableSocketDirectoryURL()?
             .appendingPathComponent("vmux-\(currentUserID).sock", isDirectory: false)
             .path ?? "/tmp/vmux-\(currentUserID).sock"
     }
 
-    static func resolvedStableDefaultSocketPath(
+    public static func resolvedStableDefaultSocketPath(
         currentUserID: uid_t = getuid(),
         probeStableDefaultPathEntry: (String) -> StableDefaultSocketPathEntry = inspectStableDefaultSocketPathEntry
     ) -> String {
@@ -490,7 +490,7 @@ struct SocketControlSettings {
         }
     }
 
-    static func recordLastSocketPath(_ path: String, filePath: String = lastSocketPathFile) {
+    public static func recordLastSocketPath(_ path: String, filePath: String = lastSocketPathFile) {
         let payload = Data((path + "\n").utf8)
         writeSocketPathMarker(payload, to: filePath)
         if filePath != legacyLastSocketPathFile {
@@ -498,7 +498,7 @@ struct SocketControlSettings {
         }
     }
 
-    static func shouldHonorSocketPathOverride(
+    public static func shouldHonorSocketPathOverride(
         environment: [String: String],
         bundleIdentifier: String?,
         isDebugBuild: Bool
@@ -512,31 +512,31 @@ struct SocketControlSettings {
         return isDebugBuild
     }
 
-    static func isDebugLikeBundleIdentifier(_ bundleIdentifier: String?) -> Bool {
+    public static func isDebugLikeBundleIdentifier(_ bundleIdentifier: String?) -> Bool {
         guard let bundleIdentifier else { return false }
         return bundleIdentifier == "com.vmuxterm.app.debug"
             || bundleIdentifier.hasPrefix("com.vmuxterm.app.debug.")
     }
 
-    static func isStagingBundleIdentifier(_ bundleIdentifier: String?) -> Bool {
+    public static func isStagingBundleIdentifier(_ bundleIdentifier: String?) -> Bool {
         guard let bundleIdentifier else { return false }
         return bundleIdentifier == "com.vmuxterm.app.staging"
             || bundleIdentifier.hasPrefix("com.vmuxterm.app.staging.")
     }
 
-    static func stableSocketDirectoryURL(fileManager: FileManager = .default) -> URL? {
+    public static func stableSocketDirectoryURL(fileManager: FileManager = .default) -> URL? {
         guard let appSupportDirectory = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
             return nil
         }
         return appSupportDirectory.appendingPathComponent(socketDirectoryName, isDirectory: true)
     }
 
-    static func stableSocketFileURL(fileManager: FileManager = .default) -> URL? {
+    public static func stableSocketFileURL(fileManager: FileManager = .default) -> URL? {
         stableSocketDirectoryURL(fileManager: fileManager)?
             .appendingPathComponent(stableSocketFileName, isDirectory: false)
     }
 
-    static func lastSocketPathFileURL(fileManager: FileManager = .default) -> URL? {
+    public static func lastSocketPathFileURL(fileManager: FileManager = .default) -> URL? {
         stableSocketDirectoryURL(fileManager: fileManager)?
             .appendingPathComponent(lastSocketPathFileName, isDirectory: false)
     }
@@ -552,7 +552,7 @@ struct SocketControlSettings {
         try? payload.write(to: fileURL, options: .atomic)
     }
 
-    private static func inspectStableDefaultSocketPathEntry(_ path: String) -> StableDefaultSocketPathEntry {
+    public static func inspectStableDefaultSocketPathEntry(_ path: String) -> StableDefaultSocketPathEntry {
         var st = stat()
         guard lstat(path, &st) == 0 else {
             let errnoCode = errno
@@ -569,7 +569,7 @@ struct SocketControlSettings {
         return .other(ownerUserID: st.st_uid)
     }
 
-    static func isTruthy(_ raw: String?) -> Bool {
+    public static func isTruthy(_ raw: String?) -> Bool {
         guard let raw else { return false }
         switch raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
         case "1", "true", "yes", "on":
@@ -579,7 +579,7 @@ struct SocketControlSettings {
         }
     }
 
-    static func envOverrideEnabled(
+    public static func envOverrideEnabled(
         environment: [String: String] = ProcessInfo.processInfo.environment
     ) -> Bool? {
         guard let raw = environment["VMUX_SOCKET_ENABLE"], !raw.isEmpty else {
@@ -596,7 +596,7 @@ struct SocketControlSettings {
         }
     }
 
-    static func envOverrideMode(
+    public static func envOverrideMode(
         environment: [String: String] = ProcessInfo.processInfo.environment
     ) -> SocketControlMode? {
         guard let raw = environment["VMUX_SOCKET_MODE"], !raw.isEmpty else {
@@ -605,7 +605,7 @@ struct SocketControlSettings {
         return parseMode(raw)
     }
 
-    static func effectiveMode(
+    public static func effectiveMode(
         userMode: SocketControlMode,
         environment: [String: String] = ProcessInfo.processInfo.environment
     ) -> SocketControlMode {
