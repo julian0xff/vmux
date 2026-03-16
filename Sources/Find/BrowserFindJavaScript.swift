@@ -4,13 +4,13 @@ import Foundation
 ///
 /// Uses TreeWalker to scan text nodes and wraps matches with `<mark>` elements.
 /// The current match gets an additional `.current` class and is scrolled into view.
-public enum BrowserFindJavaScript {
+enum BrowserFindJavaScript {
 
     // MARK: - Public API
 
     /// Returns JS that highlights all occurrences of `query` in the document body.
     /// The script evaluates to a JSON string `{"total":N,"current":0}`.
-    public static func searchScript(query: String) -> String {
+    static func searchScript(query: String) -> String {
         let escaped = jsStringEscape(query)
         return """
         (() => {
@@ -104,7 +104,7 @@ public enum BrowserFindJavaScript {
     }
 
     /// Returns JS that moves to the next match. Evaluates to `{"total":N,"current":M}`.
-    public static func nextScript() -> String {
+    static func nextScript() -> String {
         """
         (() => {
           const matches = window.__vmuxFindMatches || [];
@@ -131,7 +131,7 @@ public enum BrowserFindJavaScript {
     }
 
     /// Returns JS that moves to the previous match. Evaluates to `{"total":N,"current":M}`.
-    public static func previousScript() -> String {
+    static func previousScript() -> String {
         """
         (() => {
           const matches = window.__vmuxFindMatches || [];
@@ -158,7 +158,7 @@ public enum BrowserFindJavaScript {
     }
 
     /// Returns JS that removes all find highlights and restores the DOM.
-    public static func clearScript() -> String {
+    static func clearScript() -> String {
         """
         (() => {
           \(clearBody)
@@ -185,7 +185,7 @@ public enum BrowserFindJavaScript {
     """
 
     /// Escape a Swift string for safe embedding inside a JS double-quoted string literal.
-    public static func jsStringEscape(_ string: String) -> String {
+    static func jsStringEscape(_ string: String) -> String {
         var result = ""
         result.reserveCapacity(string.count)
         for scalar in string.unicodeScalars {

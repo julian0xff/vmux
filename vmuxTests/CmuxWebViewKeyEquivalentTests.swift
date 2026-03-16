@@ -7,7 +7,6 @@ import SwiftUI
 import ObjectiveC.runtime
 import Bonsplit
 import UserNotifications
-import VmuxBrowser
 
 #if canImport(vmux_DEV)
 @testable import vmux_DEV

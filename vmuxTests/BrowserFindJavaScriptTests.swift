@@ -1,5 +1,4 @@
 import XCTest
-import VmuxBrowser
 
 #if canImport(vmux_DEV)
 @testable import vmux_DEV

@@ -6,8 +6,6 @@ import Combine
 import CoreText
 import VmuxCore
 import VmuxSession
-import VmuxTerminal
-import VmuxBrowser
 func vmuxSurfaceContextName(_ context: ghostty_surface_context_e) -> String {
     switch context {
     case GHOSTTY_SURFACE_CONTEXT_WINDOW:
@@ -1107,9 +1105,9 @@ final class Workspace: Identifiable, ObservableObject {
         let currentChromeColors = bonsplitController.configuration.appearance.chromeColors
         let isNoOp = currentChromeColors.backgroundHex == nextHex
 
-        if TerminalEngine.shared?.backgroundLogEnabled == true {
+        if GhosttyApp.shared.backgroundLogEnabled {
             let currentBackgroundHex = currentChromeColors.backgroundHex ?? "nil"
-            TerminalEngine.shared?.logBackground(
+            GhosttyApp.shared.logBackground(
                 "theme apply workspace=\(id.uuidString) reason=\(reason) currentBg=\(currentBackgroundHex) nextBg=\(nextHex) noop=\(isNoOp)"
             )
         }
@@ -1118,8 +1116,8 @@ final class Workspace: Identifiable, ObservableObject {
             return
         }
         bonsplitController.configuration.appearance.chromeColors.backgroundHex = nextHex
-        if TerminalEngine.shared?.backgroundLogEnabled == true {
-            TerminalEngine.shared?.logBackground(
+        if GhosttyApp.shared.backgroundLogEnabled {
+            GhosttyApp.shared.logBackground(
                 "theme applied workspace=\(id.uuidString) reason=\(reason) resultingBg=\(bonsplitController.configuration.appearance.chromeColors.backgroundHex ?? "nil") resultingBorder=\(bonsplitController.configuration.appearance.chromeColors.borderHex ?? "nil")"
             )
         }
@@ -1157,8 +1155,8 @@ final class Workspace: Identifiable, ObservableObject {
         // Avoid re-reading/parsing Ghostty config on every new workspace; this hot path
         // runs for socket/CLI workspace creation and can cause visible typing lag.
         let appearance = Self.bonsplitAppearance(
-            from: TerminalEngine.shared?.defaultBackgroundColor ?? .windowBackgroundColor,
-            backgroundOpacity: TerminalEngine.shared?.defaultBackgroundOpacity ?? 1.0
+            from: GhosttyApp.shared.defaultBackgroundColor,
+            backgroundOpacity: GhosttyApp.shared.defaultBackgroundOpacity
         )
         let config = BonsplitConfiguration(
             allowSplits: true,

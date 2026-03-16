@@ -5,8 +5,6 @@ import Bonsplit
 import VmuxCore
 import VmuxSocket
 import VmuxUpdate
-import VmuxTerminal
-import VmuxBrowser
 import UniformTypeIdentifiers
 
 @main
@@ -242,10 +240,10 @@ struct vmuxApp: App {
                     showAboutPanel()
                 }
                 Button(String(localized: "menu.app.ghosttySettings", defaultValue: "Ghostty Settings…")) {
-                    TerminalEngine.shared?.openConfigurationInTextEdit()
+                    GhosttyApp.shared.openConfigurationInTextEdit()
                 }
                 Button(String(localized: "menu.app.reloadConfiguration", defaultValue: "Reload Configuration")) {
-                    TerminalEngine.shared?.reloadConfiguration(source: "menu.reload_configuration")
+                    GhosttyApp.shared.reloadConfiguration(source: "menu.reload_configuration")
                 }
                 .keyboardShortcut(",", modifiers: [.command, .shift])
                 Divider()

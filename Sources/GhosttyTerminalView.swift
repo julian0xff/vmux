@@ -11,7 +11,6 @@ import UniformTypeIdentifiers
 import VmuxCore
 import VmuxSession
 import VmuxSocket
-import VmuxBrowser
 #if os(macOS)
 func vmuxShouldUseTransparentBackgroundWindow() -> Bool {
     let defaults = UserDefaults.standard

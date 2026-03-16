@@ -3,8 +3,6 @@ import Foundation
 import AppKit
 import Bonsplit
 import VmuxCore
-import VmuxTerminal
-import VmuxBrowser
 
 /// View that renders a Workspace's content using BonsplitView
 struct WorkspaceContentView: View {
@@ -138,10 +136,10 @@ struct WorkspaceContentView: View {
             let eventId = (notification.userInfo?[GhosttyNotificationKey.backgroundEventId] as? NSNumber)?.uint64Value
             let source = (notification.userInfo?[GhosttyNotificationKey.backgroundSource] as? String) ?? "nil"
             logTheme(
-                "theme notification workspace=\(workspace.id.uuidString) event=\(eventId.map(String.init) ?? "nil") source=\(source) payload=\(payloadHex) appBg=\((TerminalEngine.shared?.defaultBackgroundColor ?? .windowBackgroundColor).hexString()) appOpacity=\(String(format: "%.3f", TerminalEngine.shared?.defaultBackgroundOpacity ?? 1.0))"
+                "theme notification workspace=\(workspace.id.uuidString) event=\(eventId.map(String.init) ?? "nil") source=\(source) payload=\(payloadHex) appBg=\(GhosttyApp.shared.defaultBackgroundColor.hexString()) appOpacity=\(String(format: "%.3f", GhosttyApp.shared.defaultBackgroundOpacity))"
             )
             // Payload ordering can lag across rapid config/theme updates.
-            // Resolve from TerminalEngine.shared?.defaultBackgroundColor ?? .windowBackgroundColor to keep tabs aligned
+            // Resolve from GhosttyApp.shared.defaultBackgroundColor to keep tabs aligned
             // with Ghostty's current runtime theme.
             refreshGhosttyAppearanceConfig(
                 reason: "ghosttyDefaultBackgroundDidChange",
@@ -211,8 +209,8 @@ struct WorkspaceContentView: View {
         // Use the runtime opacity from the Ghostty engine, which may differ from the
         // file-level value parsed by GhosttyConfig.load().
         next.backgroundOpacity = defaultBackgroundOpacity()
-        if TerminalEngine.shared?.backgroundLogEnabled == true {
-            TerminalEngine.shared?.logBackground(
+        if GhosttyApp.shared.backgroundLogEnabled {
+            GhosttyApp.shared.logBackground(
                 "theme resolve reason=\(reason) loadedBg=\(loadedBackgroundHex) overrideBg=\(backgroundOverride?.hexString() ?? "nil") defaultBg=\(defaultBackgroundHex) finalBg=\(next.backgroundColor.hexString()) opacity=\(String(format: "%.3f", next.backgroundOpacity)) theme=\(next.theme ?? "nil")"
             )
         }
@@ -278,8 +276,8 @@ struct WorkspaceContentView: View {
     }
 
     private func logTheme(_ message: String) {
-        guard TerminalEngine.shared?.backgroundLogEnabled == true else { return }
-        TerminalEngine.shared?.logBackground(message)
+        guard GhosttyApp.shared.backgroundLogEnabled else { return }
+        GhosttyApp.shared.logBackground(message)
     }
 }
 
