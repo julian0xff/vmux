@@ -9553,69 +9553,15 @@ private struct SidebarHelpMenuButton: View {
     private var helpPopover: some View {
         VStack(alignment: .leading, spacing: 2) {
             helpOptionButton(
-                title: String(localized: "sidebar.help.welcome", defaultValue: "Welcome to vmux!"),
+                title: String(localized: "sidebar.help.welcome", defaultValue: "Welcome"),
                 action: .welcome,
                 accessibilityIdentifier: "SidebarHelpMenuOptionWelcome",
                 isExternalLink: false
             )
             helpOptionButton(
-                title: String(localized: "sidebar.help.sendFeedback", defaultValue: "Send Feedback"),
-                action: .sendFeedback,
-                accessibilityIdentifier: "SidebarHelpMenuOptionSendFeedback",
-                isExternalLink: false,
-                shortcutHint: sendFeedbackShortcutHint,
-                trailingSystemImage: "bubble.left.and.text.bubble.right"
-            )
-            helpOptionButton(
                 title: String(localized: "settings.section.keyboardShortcuts", defaultValue: "Keyboard Shortcuts"),
                 action: .keyboardShortcuts,
                 accessibilityIdentifier: "SidebarHelpMenuOptionKeyboardShortcuts",
-                isExternalLink: false
-            )
-            if docsURL != nil {
-                helpOptionButton(
-                    title: String(localized: "about.docs", defaultValue: "Docs"),
-                    action: .docs,
-                    accessibilityIdentifier: "SidebarHelpMenuOptionDocs",
-                    isExternalLink: true
-                )
-            }
-            if changelogURL != nil {
-                helpOptionButton(
-                    title: String(localized: "sidebar.help.changelog", defaultValue: "Changelog"),
-                    action: .changelog,
-                    accessibilityIdentifier: "SidebarHelpMenuOptionChangelog",
-                    isExternalLink: true
-                )
-            }
-            if githubURL != nil {
-                helpOptionButton(
-                    title: String(localized: "about.github", defaultValue: "GitHub"),
-                    action: .github,
-                    accessibilityIdentifier: "SidebarHelpMenuOptionGitHub",
-                    isExternalLink: true
-                )
-            }
-            if githubIssuesURL != nil {
-                helpOptionButton(
-                    title: String(localized: "sidebar.help.githubIssues", defaultValue: "GitHub Issues"),
-                    action: .githubIssues,
-                    accessibilityIdentifier: "SidebarHelpMenuOptionGitHubIssues",
-                    isExternalLink: true
-                )
-            }
-            if discordURL != nil {
-                helpOptionButton(
-                    title: String(localized: "sidebar.help.discord", defaultValue: "Discord"),
-                    action: .discord,
-                    accessibilityIdentifier: "SidebarHelpMenuOptionDiscord",
-                    isExternalLink: true
-                )
-            }
-            helpOptionButton(
-                title: String(localized: "command.checkForUpdates.title", defaultValue: "Check for Updates"),
-                action: .checkForUpdates,
-                accessibilityIdentifier: "SidebarHelpMenuOptionCheckForUpdates",
                 isExternalLink: false
             )
         }
