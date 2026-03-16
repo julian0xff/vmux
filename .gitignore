@@ -21,7 +21,7 @@ GhosttyKit.xcframework.bak-*/
 
 # Release artifacts
 GhosttyTabs-*.zip
-cmux-macos.dmg
+vmux-macos.dmg
 appcast.xml
 
 # Python
@@ -47,3 +47,6 @@ tests/visual_report.html
 # Local scratch (screenshots, etc.)
 tmp/
 tmp-*/
+
+# Personal notes
+IDEAS.md

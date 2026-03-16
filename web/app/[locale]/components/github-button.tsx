@@ -6,7 +6,7 @@ export function GitHubButton() {
   const t = useTranslations("common");
   return (
     <a
-      href="https://github.com/manaflow-ai/cmux"
+      href="https://github.com/manaflow-ai/vmux"
       target="_blank"
       rel="noopener noreferrer"
       className="inline-flex items-center whitespace-nowrap gap-2 rounded-full border border-border px-5 py-2.5 text-[15px] font-medium text-foreground hover:bg-code-bg transition-colors"

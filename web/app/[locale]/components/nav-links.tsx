@@ -32,7 +32,7 @@ export function NavLinks() {
         {t("community")}
       </Link>
       <a
-        href="https://github.com/manaflow-ai/cmux"
+        href="https://github.com/manaflow-ai/vmux"
         target="_blank"
         rel="noopener noreferrer"
         className="hover:text-foreground transition-colors"

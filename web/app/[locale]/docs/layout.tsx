@@ -15,7 +15,7 @@ export async function generateMetadata({
       default: t("layoutTitle"),
     },
     openGraph: {
-      siteName: "cmux",
+      siteName: "vmux",
       type: "article" as const,
     },
     alternates: {

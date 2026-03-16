@@ -30,10 +30,10 @@ export default function GettingStartedPage() {
       <p>{t("dmgDesc")}</p>
 
       <h3>{t("homebrew")}</h3>
-      <CodeBlock lang="bash">{`brew tap manaflow-ai/cmux
-brew install --cask cmux`}</CodeBlock>
+      <CodeBlock lang="bash">{`brew tap manaflow-ai/vmux
+brew install --cask vmux`}</CodeBlock>
       <p>{t("updateLater")}</p>
-      <CodeBlock lang="bash">{`brew upgrade --cask cmux`}</CodeBlock>
+      <CodeBlock lang="bash">{`brew upgrade --cask vmux`}</CodeBlock>
 
       <Callout>
         {t.rich("firstLaunchCallout", {
@@ -51,10 +51,10 @@ brew install --cask cmux`}</CodeBlock>
 
       <h2>{t("cliSetup")}</h2>
       <p>{t("cliDesc")}</p>
-      <CodeBlock lang="bash">{`sudo ln -sf "/Applications/cmux.app/Contents/Resources/bin/cmux" /usr/local/bin/cmux`}</CodeBlock>
+      <CodeBlock lang="bash">{`sudo ln -sf "/Applications/vmux.app/Contents/Resources/bin/vmux" /usr/local/bin/vmux`}</CodeBlock>
       <p>{t("cliThen")}</p>
-      <CodeBlock lang="bash">{`cmux list-workspaces
-cmux notify --title "Build Complete" --body "Your build finished"`}</CodeBlock>
+      <CodeBlock lang="bash">{`vmux list-workspaces
+vmux notify --title "Build Complete" --body "Your build finished"`}</CodeBlock>
 
       <h2>{t("autoUpdates")}</h2>
       <p>{t("autoUpdatesDesc")}</p>

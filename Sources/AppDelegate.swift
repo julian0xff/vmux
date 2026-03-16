@@ -1978,6 +1978,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         }
         method_exchangeImplementations(originalMethod, swizzledMethod)
     }()
+    /// SwiftUI's WindowGroup creates windows whose `accessibilityPerformRaise()` returns false,
+    /// breaking any AX tool (e.g. AutoRaise) that uses `kAXRaiseAction` to raise/focus windows.
+    /// This swizzle provides the implementation that AppKit normally supplies for NSWindow.
+    private static let didInstallAccessibilityPerformRaiseSwizzle: Void = {
+        let targetClass: AnyClass = NSWindow.self
+        let originalSelector = Selector(("accessibilityPerformRaise"))
+        let swizzledSelector = #selector(NSWindow.vmux_accessibilityPerformRaise)
+        guard let originalMethod = class_getInstanceMethod(targetClass, originalSelector),
+              let swizzledMethod = class_getInstanceMethod(targetClass, swizzledSelector) else {
+            return
+        }
+        method_exchangeImplementations(originalMethod, swizzledMethod)
+    }()
 
 #if DEBUG
     private var didSetupJumpUnreadUITest = false
@@ -7503,6 +7516,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         _ = Self.didInstallWindowKeyEquivalentSwizzle
         _ = Self.didInstallWindowFirstResponderSwizzle
         _ = Self.didInstallWindowSendEventSwizzle
+        _ = Self.didInstallAccessibilityPerformRaiseSwizzle
     }
 
     private func installShortcutMonitor() {
@@ -10975,6 +10989,14 @@ private extension NSWindow {
             }
         }
         return result
+    }
+
+    /// SwiftUI WindowGroup windows return false from `accessibilityPerformRaise()`, breaking
+    /// accessibility tools (e.g. AutoRaise) that use `kAXRaiseAction`. Provide the standard
+    /// AppKit behavior: bring the window to front.
+    @objc func vmux_accessibilityPerformRaise() -> Bool {
+        makeKeyAndOrderFront(nil)
+        return true
     }
 
     @objc func vmux_sendEvent(_ event: NSEvent) {

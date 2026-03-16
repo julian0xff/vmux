@@ -4,13 +4,13 @@ import { Link } from "../../../../i18n/navigation";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "blog.introducingCmux" });
-  const url = locale === "en" ? "/blog/introducing-cmux" : `/${locale}/blog/introducing-cmux`;
+  const t = await getTranslations({ locale, namespace: "blog.introducingVmux" });
+  const url = locale === "en" ? "/blog/introducing-vmux" : `/${locale}/blog/introducing-vmux`;
   return {
     title: t("metaTitle"),
     description: t("metaDescription"),
     keywords: [
-      "cmux", "terminal", "macOS", "Ghostty", "libghostty",
+      "vmux", "terminal", "macOS", "Ghostty", "libghostty",
       "AI coding agents", "Claude Code", "vertical tabs", "split panes", "socket API",
     ],
     openGraph: {
@@ -29,8 +29,8 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   };
 }
 
-export default function IntroducingCmuxPage() {
-  const t = useTranslations("blog.posts.introducingCmux");
+export default function IntroducingVmuxPage() {
+  const t = useTranslations("blog.posts.introducingVmux");
   const tc = useTranslations("common");
 
   return (

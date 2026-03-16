@@ -55,19 +55,19 @@ export default function ApiPage() {
           <tr>
             <td>{t("release")}</td>
             <td>
-              <code>/tmp/cmux.sock</code>
+              <code>/tmp/vmux.sock</code>
             </td>
           </tr>
           <tr>
             <td>{t("debug")}</td>
             <td>
-              <code>/tmp/cmux-debug.sock</code>
+              <code>/tmp/vmux-debug.sock</code>
             </td>
           </tr>
           <tr>
             <td>{t("taggedDebug")}</td>
             <td>
-              <code>/tmp/cmux-debug-&lt;tag&gt;.sock</code>
+              <code>/tmp/vmux-debug-&lt;tag&gt;.sock</code>
             </td>
           </tr>
         </tbody>
@@ -101,10 +101,10 @@ export default function ApiPage() {
           </tr>
           <tr>
             <td>
-              <strong>cmux processes only</strong>
+              <strong>vmux processes only</strong>
             </td>
-            <td>{t("cmuxOnlyMode")}</td>
-            <td>{t("cmuxOnlyEnable")}</td>
+            <td>{t("vmuxOnlyMode")}</td>
+            <td>{t("vmuxOnlyEnable")}</td>
           </tr>
           <tr>
             <td>
@@ -172,33 +172,33 @@ export default function ApiPage() {
       <Cmd
         name="list-workspaces"
         desc={t("listWorkspacesDesc")}
-        cli={`cmux list-workspaces
-cmux list-workspaces --json`}
+        cli={`vmux list-workspaces
+vmux list-workspaces --json`}
         socket={`{"id":"ws-list","method":"workspace.list","params":{}}`}
       />
       <Cmd
         name="new-workspace"
         desc={t("newWorkspaceDesc")}
-        cli={`cmux new-workspace`}
+        cli={`vmux new-workspace`}
         socket={`{"id":"ws-new","method":"workspace.create","params":{}}`}
       />
       <Cmd
         name="select-workspace"
         desc={t("selectWorkspaceDesc")}
-        cli={`cmux select-workspace --workspace <id>`}
+        cli={`vmux select-workspace --workspace <id>`}
         socket={`{"id":"ws-select","method":"workspace.select","params":{"workspace_id":"<id>"}}`}
       />
       <Cmd
         name="current-workspace"
         desc={t("currentWorkspaceDesc")}
-        cli={`cmux current-workspace
-cmux current-workspace --json`}
+        cli={`vmux current-workspace
+vmux current-workspace --json`}
         socket={`{"id":"ws-current","method":"workspace.current","params":{}}`}
       />
       <Cmd
         name="close-workspace"
         desc={t("closeWorkspaceDesc")}
-        cli={`cmux close-workspace --workspace <id>`}
+        cli={`vmux close-workspace --workspace <id>`}
         socket={`{"id":"ws-close","method":"workspace.close","params":{"workspace_id":"<id>"}}`}
       />
 
@@ -207,21 +207,21 @@ cmux current-workspace --json`}
       <Cmd
         name="new-split"
         desc={t("newSplitDesc")}
-        cli={`cmux new-split right
-cmux new-split down`}
+        cli={`vmux new-split right
+vmux new-split down`}
         socket={`{"id":"split-new","method":"surface.split","params":{"direction":"right"}}`}
       />
       <Cmd
         name="list-surfaces"
         desc={t("listSurfacesDesc")}
-        cli={`cmux list-surfaces
-cmux list-surfaces --json`}
+        cli={`vmux list-surfaces
+vmux list-surfaces --json`}
         socket={`{"id":"surface-list","method":"surface.list","params":{}}`}
       />
       <Cmd
         name="focus-surface"
         desc={t("focusSurfaceDesc")}
-        cli={`cmux focus-surface --surface <id>`}
+        cli={`vmux focus-surface --surface <id>`}
         socket={`{"id":"surface-focus","method":"surface.focus","params":{"surface_id":"<id>"}}`}
       />
 
@@ -230,26 +230,26 @@ cmux list-surfaces --json`}
       <Cmd
         name="send"
         desc={t("sendDesc")}
-        cli={`cmux send "echo hello"
-cmux send "ls -la\\n"`}
+        cli={`vmux send "echo hello"
+vmux send "ls -la\\n"`}
         socket={`{"id":"send-text","method":"surface.send_text","params":{"text":"echo hello\\n"}}`}
       />
       <Cmd
         name="send-key"
         desc={t("sendKeyDesc")}
-        cli={`cmux send-key enter`}
+        cli={`vmux send-key enter`}
         socket={`{"id":"send-key","method":"surface.send_key","params":{"key":"enter"}}`}
       />
       <Cmd
         name="send-surface"
         desc={t("sendSurfaceDesc")}
-        cli={`cmux send-surface --surface <id> "command"`}
+        cli={`vmux send-surface --surface <id> "command"`}
         socket={`{"id":"send-surface","method":"surface.send_text","params":{"surface_id":"<id>","text":"command"}}`}
       />
       <Cmd
         name="send-key-surface"
         desc={t("sendKeySurfaceDesc")}
-        cli={`cmux send-key-surface --surface <id> enter`}
+        cli={`vmux send-key-surface --surface <id> enter`}
         socket={`{"id":"send-key-surface","method":"surface.send_key","params":{"surface_id":"<id>","key":"enter"}}`}
       />
 
@@ -258,21 +258,21 @@ cmux send "ls -la\\n"`}
       <Cmd
         name="notify"
         desc={t("notifyDesc")}
-        cli={`cmux notify --title "Title" --body "Body"
-cmux notify --title "T" --subtitle "S" --body "B"`}
+        cli={`vmux notify --title "Title" --body "Body"
+vmux notify --title "T" --subtitle "S" --body "B"`}
         socket={`{"id":"notify","method":"notification.create","params":{"title":"Title","subtitle":"S","body":"Body"}}`}
       />
       <Cmd
         name="list-notifications"
         desc={t("listNotificationsDesc")}
-        cli={`cmux list-notifications
-cmux list-notifications --json`}
+        cli={`vmux list-notifications
+vmux list-notifications --json`}
         socket={`{"id":"notif-list","method":"notification.list","params":{}}`}
       />
       <Cmd
         name="clear-notifications"
         desc={t("clearNotificationsDesc")}
-        cli={`cmux clear-notifications`}
+        cli={`vmux clear-notifications`}
         socket={`{"id":"notif-clear","method":"notification.clear","params":{}}`}
       />
 
@@ -282,61 +282,61 @@ cmux list-notifications --json`}
       <Cmd
         name="set-status"
         desc={t("setStatusDesc")}
-        cli={`cmux set-status build "compiling" --icon hammer --color "#ff9500"
-cmux set-status deploy "v1.2.3" --workspace workspace:2`}
+        cli={`vmux set-status build "compiling" --icon hammer --color "#ff9500"
+vmux set-status deploy "v1.2.3" --workspace workspace:2`}
         socket={`set_status build compiling --icon=hammer --color=#ff9500 --tab=<workspace-uuid>`}
       />
       <Cmd
         name="clear-status"
         desc={t("clearStatusDesc")}
-        cli={`cmux clear-status build`}
+        cli={`vmux clear-status build`}
         socket={`clear_status build --tab=<workspace-uuid>`}
       />
       <Cmd
         name="list-status"
         desc={t("listStatusDesc")}
-        cli={`cmux list-status`}
+        cli={`vmux list-status`}
         socket={`list_status --tab=<workspace-uuid>`}
       />
       <Cmd
         name="set-progress"
         desc={t("setProgressDesc")}
-        cli={`cmux set-progress 0.5 --label "Building..."
-cmux set-progress 1.0 --label "Done"`}
+        cli={`vmux set-progress 0.5 --label "Building..."
+vmux set-progress 1.0 --label "Done"`}
         socket={`set_progress 0.5 --label=Building... --tab=<workspace-uuid>`}
       />
       <Cmd
         name="clear-progress"
         desc={t("clearProgressDesc")}
-        cli={`cmux clear-progress`}
+        cli={`vmux clear-progress`}
         socket={`clear_progress --tab=<workspace-uuid>`}
       />
       <Cmd
         name="log"
         desc={t("logDesc")}
-        cli={`cmux log "Build started"
-cmux log --level error --source build "Compilation failed"
-cmux log --level success -- "All 42 tests passed"`}
+        cli={`vmux log "Build started"
+vmux log --level error --source build "Compilation failed"
+vmux log --level success -- "All 42 tests passed"`}
         socket={`log --level=error --source=build --tab=<workspace-uuid> -- Compilation failed`}
       />
       <Cmd
         name="clear-log"
         desc={t("clearLogDesc")}
-        cli={`cmux clear-log`}
+        cli={`vmux clear-log`}
         socket={`clear_log --tab=<workspace-uuid>`}
       />
       <Cmd
         name="list-log"
         desc={t("listLogDesc")}
-        cli={`cmux list-log
-cmux list-log --limit 5`}
+        cli={`vmux list-log
+vmux list-log --limit 5`}
         socket={`list_log --limit=5 --tab=<workspace-uuid>`}
       />
       <Cmd
         name="sidebar-state"
         desc={t("sidebarStateDesc")}
-        cli={`cmux sidebar-state
-cmux sidebar-state --workspace workspace:2`}
+        cli={`vmux sidebar-state
+vmux sidebar-state --workspace workspace:2`}
         socket={`sidebar_state --tab=<workspace-uuid>`}
       />
 
@@ -345,22 +345,22 @@ cmux sidebar-state --workspace workspace:2`}
       <Cmd
         name="ping"
         desc={t("pingDesc")}
-        cli={`cmux ping`}
+        cli={`vmux ping`}
         socket={`{"id":"ping","method":"system.ping","params":{}}
 // Response: {"id":"ping","ok":true,"result":{"pong":true}}`}
       />
       <Cmd
         name="capabilities"
         desc={t("capabilitiesDesc")}
-        cli={`cmux capabilities
-cmux capabilities --json`}
+        cli={`vmux capabilities
+vmux capabilities --json`}
         socket={`{"id":"caps","method":"system.capabilities","params":{}}`}
       />
       <Cmd
         name="identify"
         desc={t("identifyDesc")}
-        cli={`cmux identify
-cmux identify --json`}
+        cli={`vmux identify
+vmux identify --json`}
         socket={`{"id":"identify","method":"system.identify","params":{}}`}
       />
 
@@ -375,31 +375,31 @@ cmux identify --json`}
         <tbody>
           <tr>
             <td>
-              <code>CMUX_SOCKET_PATH</code>
+              <code>VMUX_SOCKET_PATH</code>
             </td>
             <td>{t("socketPathDesc")}</td>
           </tr>
           <tr>
             <td>
-              <code>CMUX_SOCKET_ENABLE</code>
+              <code>VMUX_SOCKET_ENABLE</code>
             </td>
             <td>{t("socketEnableDesc")}</td>
           </tr>
           <tr>
             <td>
-              <code>CMUX_SOCKET_MODE</code>
+              <code>VMUX_SOCKET_MODE</code>
             </td>
             <td>{t("socketModeDesc")}</td>
           </tr>
           <tr>
             <td>
-              <code>CMUX_WORKSPACE_ID</code>
+              <code>VMUX_WORKSPACE_ID</code>
             </td>
             <td>{t("workspaceIdDesc")}</td>
           </tr>
           <tr>
             <td>
-              <code>CMUX_SURFACE_ID</code>
+              <code>VMUX_SURFACE_ID</code>
             </td>
             <td>{t("surfaceIdDesc")}</td>
           </tr>
@@ -421,19 +421,19 @@ cmux identify --json`}
         {t("envCallout")}
       </Callout>
 
-      <h2>{t("detectingCmux")}</h2>
+      <h2>{t("detectingVmux")}</h2>
       <CodeBlock title="bash" lang="bash">{`# Prefer explicit socket path if set
-SOCK="\${CMUX_SOCKET_PATH:-/tmp/cmux.sock}"
+SOCK="\${VMUX_SOCKET_PATH:-/tmp/vmux.sock}"
 [ -S "$SOCK" ] && echo "Socket available"
 
 # Check for the CLI
-command -v cmux &>/dev/null && echo "cmux available"
+command -v vmux &>/dev/null && echo "vmux available"
 
-# In cmux-managed terminals these are auto-set
-[ -n "\${CMUX_WORKSPACE_ID:-}" ] && [ -n "\${CMUX_SURFACE_ID:-}" ] && echo "Inside cmux surface"
+# In vmux-managed terminals these are auto-set
+[ -n "\${VMUX_WORKSPACE_ID:-}" ] && [ -n "\${VMUX_SURFACE_ID:-}" ] && echo "Inside vmux surface"
 
 # Distinguish from regular Ghostty
-[ "$TERM_PROGRAM" = "ghostty" ] && [ -n "\${CMUX_WORKSPACE_ID:-}" ] && echo "In cmux"`}</CodeBlock>
+[ "$TERM_PROGRAM" = "ghostty" ] && [ -n "\${VMUX_WORKSPACE_ID:-}" ] && echo "In vmux"`}</CodeBlock>
 
       <h2>{t("examples")}</h2>
 
@@ -442,7 +442,7 @@ command -v cmux &>/dev/null && echo "cmux available"
 import os
 import socket
 
-SOCKET_PATH = os.environ.get("CMUX_SOCKET_PATH", "/tmp/cmux.sock")
+SOCKET_PATH = os.environ.get("VMUX_SOCKET_PATH", "/tmp/vmux.sock")
 
 def rpc(method, params=None, req_id=1):
     payload = {"id": req_id, "method": method, "params": params or {}}
@@ -463,22 +463,22 @@ print(rpc(
 
       <h3>{t("shellScript")}</h3>
       <CodeBlock title="bash" lang="bash">{`#!/bin/bash
-SOCK="\${CMUX_SOCKET_PATH:-/tmp/cmux.sock}"
+SOCK="\${VMUX_SOCKET_PATH:-/tmp/vmux.sock}"
 
-cmux_cmd() {
+vmux_cmd() {
     printf "%s\\n" "$1" | nc -U "$SOCK"
 }
 
-cmux_cmd '{"id":"ws","method":"workspace.list","params":{}}'
-cmux_cmd '{"id":"notify","method":"notification.create","params":{"title":"Done","body":"Task complete"}}'`}</CodeBlock>
+vmux_cmd '{"id":"ws","method":"workspace.list","params":{}}'
+vmux_cmd '{"id":"notify","method":"notification.create","params":{"title":"Done","body":"Task complete"}}'`}</CodeBlock>
 
       <h3>{t("buildScriptNotification")}</h3>
       <CodeBlock title="bash" lang="bash">{`#!/bin/bash
 npm run build
 if [ $? -eq 0 ]; then
-    cmux notify --title "✓ Build Success" --body "Ready to deploy"
+    vmux notify --title "✓ Build Success" --body "Ready to deploy"
 else
-    cmux notify --title "✗ Build Failed" --body "Check the logs"
+    vmux notify --title "✗ Build Failed" --body "Check the logs"
 fi`}</CodeBlock>
     </>
   );

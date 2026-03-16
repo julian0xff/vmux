@@ -22,7 +22,7 @@ jobs:
       - name: Validate unit-test SwiftPM retry guard
         run: ./tests/test_ci_unit_test_spm_retry.sh
 
-      - name: Validate cmux scheme test configuration
+      - name: Validate vmux scheme test configuration
         run: ./tests/test_ci_scheme_testaction_debug.sh
 
   web-typecheck:
@@ -98,7 +98,7 @@ jobs:
           mkdir -p "$SOURCE_PACKAGES_DIR"
 
           for attempt in 1 2 3; do
-            if xcodebuild -project GhosttyTabs.xcodeproj -scheme cmux-unit -configuration Debug \
+            if xcodebuild -project GhosttyTabs.xcodeproj -scheme vmux-unit -configuration Debug \
               -clonedSourcePackagesDirPath "$SOURCE_PACKAGES_DIR" \
               -resolvePackageDependencies; then
               exit 0
@@ -116,7 +116,7 @@ jobs:
           set -euo pipefail
           SOURCE_PACKAGES_DIR="$PWD/.ci-source-packages"
           run_unit_tests() {
-            xcodebuild -project GhosttyTabs.xcodeproj -scheme cmux-unit -configuration Debug \
+            xcodebuild -project GhosttyTabs.xcodeproj -scheme vmux-unit -configuration Debug \
               -clonedSourcePackagesDirPath "$SOURCE_PACKAGES_DIR" \
               -disableAutomaticPackageResolution \
               -destination "platform=macOS" test 2>&1
@@ -157,7 +157,7 @@ jobs:
       - name: Run bundled Ghostty theme picker helper regression
         run: |
           set -euo pipefail
-          CMUX_SOURCE_PACKAGES_DIR="$PWD/.ci-source-packages" \
+          VMUX_SOURCE_PACKAGES_DIR="$PWD/.ci-source-packages" \
             ./tests/test_bundled_ghostty_theme_picker_helper.sh
 
       - name: Run CLI version memory guard regression
@@ -165,17 +165,17 @@ jobs:
           set -euo pipefail
 
           CLI_BIN="$(
-            find "$HOME/Library/Developer/Xcode/DerivedData" -path "*/Build/Products/Debug/cmux" -exec stat -f '%m %N' {} \; \
+            find "$HOME/Library/Developer/Xcode/DerivedData" -path "*/Build/Products/Debug/vmux" -exec stat -f '%m %N' {} \; \
               | sort -nr \
               | head -1 \
               | cut -d' ' -f2-
           )"
           if [ -z "${CLI_BIN:-}" ] || [ ! -x "$CLI_BIN" ]; then
-            echo "cmux CLI binary not found in DerivedData" >&2
+            echo "vmux CLI binary not found in DerivedData" >&2
             exit 1
           fi
 
-          CMUX_CLI_BIN="$CLI_BIN" python3 tests/test_cli_version_memory_guard.py
+          VMUX_CLI_BIN="$CLI_BIN" python3 tests/test_cli_version_memory_guard.py
 
   tests-depot:
     # Never run Depot jobs for fork pull requests (avoid billing on external PRs).
@@ -232,7 +232,7 @@ jobs:
           mkdir -p "$SOURCE_PACKAGES_DIR"
 
           for attempt in 1 2 3; do
-            if xcodebuild -project GhosttyTabs.xcodeproj -scheme cmux -configuration Debug \
+            if xcodebuild -project GhosttyTabs.xcodeproj -scheme vmux -configuration Debug \
               -clonedSourcePackagesDirPath "$SOURCE_PACKAGES_DIR" \
               -resolvePackageDependencies; then
               exit 0
@@ -263,13 +263,13 @@ jobs:
           # doesn't work without a physical display, even with virtual display).
           # Skip it in CI; it runs fine on local machines.
           run_ui_tests() {
-            xcodebuild -project GhosttyTabs.xcodeproj -scheme cmux -configuration Debug \
+            xcodebuild -project GhosttyTabs.xcodeproj -scheme vmux -configuration Debug \
               -clonedSourcePackagesDirPath "$SOURCE_PACKAGES_DIR" \
               -disableAutomaticPackageResolution \
               -destination "platform=macOS" \
               -maximum-test-execution-time-allowance 120 \
-              -only-testing:cmuxUITests \
-              -skip-testing:cmuxUITests/SidebarResizeUITests test 2>&1
+              -only-testing:vmuxUITests \
+              -skip-testing:vmuxUITests/SidebarResizeUITests test 2>&1
           }
 
           # xcodebuild exits 65 even for expected failures (XCTExpectFailure).
@@ -294,24 +294,24 @@ jobs:
         run: |
           set -euo pipefail
 
-          APP="$(find "$HOME/Library/Developer/Xcode/DerivedData" -path "*/Build/Products/Debug/cmux DEV.app" -print -quit)"
+          APP="$(find "$HOME/Library/Developer/Xcode/DerivedData" -path "*/Build/Products/Debug/vmux DEV.app" -print -quit)"
           if [ -z "${APP:-}" ] || [ ! -d "$APP" ]; then
-            echo "cmux DEV.app not found in DerivedData" >&2
+            echo "vmux DEV.app not found in DerivedData" >&2
             exit 1
           fi
 
           TAG="ci-lag"
-          SOCK="/tmp/cmux-debug-${TAG}.sock"
+          SOCK="/tmp/vmux-debug-${TAG}.sock"
           BUNDLE_ID="$(
             /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Contents/Info.plist" 2>/dev/null \
-              || echo 'com.cmuxterm.app.debug'
+              || echo 'com.vmuxterm.app.debug'
           )"
 
-          pkill -x "cmux DEV" || true
-          rm -f "$SOCK" "/tmp/cmux-${TAG}.sock" || true
+          pkill -x "vmux DEV" || true
+          rm -f "$SOCK" "/tmp/vmux-${TAG}.sock" || true
           defaults write "$BUNDLE_ID" socketControlMode -string full >/dev/null 2>&1 || true
 
-          CMUX_TAG="$TAG" CMUX_SOCKET_PATH="$SOCK" CMUX_UI_TEST_MODE=1 "$APP/Contents/MacOS/cmux DEV" >/tmp/cmux-ci-lag.log 2>&1 &
+          VMUX_TAG="$TAG" VMUX_SOCKET_PATH="$SOCK" VMUX_UI_TEST_MODE=1 "$APP/Contents/MacOS/vmux DEV" >/tmp/vmux-ci-lag.log 2>&1 &
           APP_PID=$!
           trap 'kill "$APP_PID" >/dev/null 2>&1 || true' EXIT
 
@@ -321,13 +321,13 @@ jobs:
           done
           [ -S "$SOCK" ] || { echo "Socket not ready at $SOCK" >&2; exit 1; }
 
-          CMUX_SOCKET_PATH="$SOCK" \
-          CMUX_LAG_MAX_P95_RATIO=1.70 \
-          CMUX_LAG_MAX_AVG_RATIO=1.70 \
-          CMUX_LAG_MIN_BASELINE_P95_MS_FOR_RATIO=6.0 \
-          CMUX_LAG_MIN_BASELINE_AVG_MS_FOR_RATIO=4.0 \
-          CMUX_LAG_MAX_P95_DELTA_MS=20.0 \
-          CMUX_LAG_MAX_AVG_DELTA_MS=12.0 \
-          CMUX_LAG_MAX_CHURN_P95_MS=35 \
-          CMUX_LAG_KEY_EVENTS=180 \
+          VMUX_SOCKET_PATH="$SOCK" \
+          VMUX_LAG_MAX_P95_RATIO=1.70 \
+          VMUX_LAG_MAX_AVG_RATIO=1.70 \
+          VMUX_LAG_MIN_BASELINE_P95_MS_FOR_RATIO=6.0 \
+          VMUX_LAG_MIN_BASELINE_AVG_MS_FOR_RATIO=4.0 \
+          VMUX_LAG_MAX_P95_DELTA_MS=20.0 \
+          VMUX_LAG_MAX_AVG_DELTA_MS=12.0 \
+          VMUX_LAG_MAX_CHURN_P95_MS=35 \
+          VMUX_LAG_KEY_EVENTS=180 \
           python3 tests/test_workspace_churn_up_arrow_lag.py

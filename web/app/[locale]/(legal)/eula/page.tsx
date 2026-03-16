@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "EULA — cmux",
-  description: "End-User License Agreement for cmux",
+  title: "EULA — vmux",
+  description: "End-User License Agreement for vmux",
 };
 
 export default function EulaPage() {
@@ -13,7 +13,7 @@ export default function EulaPage() {
 
       <p>
         Please read this End-User License Agreement carefully before
-        downloading or using cmux.
+        downloading or using vmux.
       </p>
 
       <h2>Interpretation and Definitions</h2>
@@ -25,7 +25,7 @@ export default function EulaPage() {
           regarding the use of the Application.
         </li>
         <li>
-          <strong>&ldquo;Application&rdquo;</strong> means the cmux desktop
+          <strong>&ldquo;Application&rdquo;</strong> means the vmux desktop
           application for macOS, a native terminal application built on Ghostty.
         </li>
         <li>

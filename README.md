@@ -1,6 +1,6 @@
 # vmux
 
-A personal fork of [cmux](https://github.com/manaflow-ai/cmux) with custom enhancements.
+A personal fork of [vmux](https://github.com/manaflow-ai/vmux) with custom enhancements.
 
 ## What's different
 

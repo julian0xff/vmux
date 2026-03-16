@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Terms of Service — cmux",
-  description: "Terms of service for cmux",
+  title: "Terms of Service — vmux",
+  description: "Terms of service for vmux",
 };
 
 export default function TermsOfServicePage() {
@@ -13,8 +13,8 @@ export default function TermsOfServicePage() {
 
       <p>
         The website located at{" "}
-        <a href="https://cmux.dev">cmux.dev</a> (the
-        &ldquo;Site&rdquo;) and the cmux desktop application (the
+        <a href="https://vmux.dev">vmux.dev</a> (the
+        &ldquo;Site&rdquo;) and the vmux desktop application (the
         &ldquo;Application&rdquo;) are copyrighted works belonging to Manaflow
         (&ldquo;Company&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;, and
         &ldquo;we&rdquo;). These Terms of Use (these &ldquo;Terms&rdquo;) set
