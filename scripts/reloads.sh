@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_NAME="cmux STAGING"
+APP_NAME="vmux STAGING"
 BUNDLE_ID="com.cmuxterm.app.staging"
-BASE_APP_NAME="cmux"
+BASE_APP_NAME="vmux"
 DERIVED_DATA=""
 NAME_SET=0
 BUNDLE_SET=0
@@ -23,7 +23,7 @@ usage() {
   cat <<'EOF'
 Usage: ./scripts/reloads.sh [options]
 
-Release build with isolated "cmux STAGING" identity. Runs side-by-side with
+Release build with isolated "vmux STAGING" identity. Runs side-by-side with
 the production cmux app.
 
 Options:
@@ -109,7 +109,7 @@ if [[ -n "$TAG" ]]; then
   TAG_ID="$(sanitize_bundle "$TAG")"
   TAG_SLUG="$(sanitize_path "$TAG")"
   if [[ "$NAME_SET" -eq 0 ]]; then
-    APP_NAME="cmux STAGING ${TAG}"
+    APP_NAME="vmux STAGING ${TAG}"
   fi
   if [[ "$BUNDLE_SET" -eq 0 ]]; then
     BUNDLE_ID="com.cmuxterm.app.staging.${TAG_ID}"
@@ -225,7 +225,7 @@ sleep 0.3
 # Kill any running staging instance; allow side-by-side with the main and dev apps.
 pkill -f "${APP_NAME}.app/Contents/MacOS/${BASE_APP_NAME}" || true
 sleep 0.3
-CMUXD_SRC="$PWD/cmuxd/zig-out/bin/cmuxd"
+CMUXD_SRC="$PWD/cmuxd/zig-out/bin/vmuxd"
 if [[ -d "$PWD/cmuxd" ]]; then
   (cd "$PWD/cmuxd" && zig build -Doptimize=ReleaseFast)
 fi

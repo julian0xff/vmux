@@ -314,7 +314,7 @@ else
   pkill -f "${APP_NAME}.app/Contents/MacOS/${BASE_APP_NAME}" || true
 fi
 sleep 0.3
-CMUXD_SRC="$PWD/cmuxd/zig-out/bin/cmuxd"
+CMUXD_SRC="$PWD/cmuxd/zig-out/bin/vmuxd"
 GHOSTTY_HELPER_SRC="$PWD/ghostty/zig-out/bin/ghostty"
 if [[ -d "$PWD/cmuxd" ]]; then
   (cd "$PWD/cmuxd" && zig build -Doptimize=ReleaseFast)
@@ -334,7 +334,7 @@ if [[ -x "$GHOSTTY_HELPER_SRC" ]]; then
   cp "$GHOSTTY_HELPER_SRC" "$BIN_DIR/ghostty"
   chmod +x "$BIN_DIR/ghostty"
 fi
-CLI_PATH="$APP_PATH/Contents/Resources/bin/cmux"
+CLI_PATH="$APP_PATH/Contents/Resources/bin/vmux"
 if [[ -x "$CLI_PATH" ]]; then
   echo "$CLI_PATH" > /tmp/cmux-last-cli-path || true
 fi

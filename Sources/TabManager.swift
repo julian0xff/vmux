@@ -1205,7 +1205,7 @@ class TabManager: ObservableObject {
             // Wait a bit more for the shell prompt to be ready
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 UserDefaults.standard.set(true, forKey: WelcomeSettings.shownKey)
-                terminalPanel.sendText("cmux welcome\n")
+                terminalPanel.sendText("vmux welcome\n")
             }
             return
         }
@@ -2436,13 +2436,13 @@ class TabManager: ObservableObject {
     }
 
     private func windowTitle(for tab: Workspace?) -> String {
-        guard let tab else { return "cmux" }
+        guard let tab else { return "vmux" }
         let trimmedTitle = tab.title.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmedTitle.isEmpty {
             return trimmedTitle
         }
         let trimmedDirectory = tab.currentDirectory.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmedDirectory.isEmpty ? "cmux" : trimmedDirectory
+        return trimmedDirectory.isEmpty ? "vmux" : trimmedDirectory
     }
 
     func focusTab(_ tabId: UUID, surfaceId: UUID? = nil, suppressFlash: Bool = false) {

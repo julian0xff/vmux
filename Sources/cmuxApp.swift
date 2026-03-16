@@ -233,7 +233,7 @@ struct cmuxApp: App {
             }
 
             CommandGroup(replacing: .appInfo) {
-                Button(String(localized: "menu.app.about", defaultValue: "About cmux")) {
+                Button(String(localized: "menu.app.about", defaultValue: "About vmux")) {
                     showAboutPanel()
                 }
                 Button(String(localized: "menu.app.ghosttySettings", defaultValue: "Ghostty Settings…")) {
@@ -1100,7 +1100,7 @@ private enum SettingsAboutWindowKind: String, CaseIterable, Identifiable {
         case .settings:
             return "Settings"
         case .about:
-            return "About cmux"
+            return "About vmux"
         }
     }
 
@@ -1213,7 +1213,7 @@ private struct SettingsAboutTitlebarDebugOptions: Equatable {
         case .about:
             return SettingsAboutTitlebarDebugOptions(
                 overridesEnabled: false,
-                windowTitle: "About cmux",
+                windowTitle: "About vmux",
                 titleVisibility: .hidden,
                 titlebarAppearsTransparent: true,
                 movableByWindowBackground: false,
@@ -1449,7 +1449,7 @@ private struct SettingsAboutTitlebarDebugView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Toggle("Enable Debug Overrides", isOn: overridesEnabled)
 
-                Text("When disabled, cmux uses normal default titlebar behavior for this window.")
+                Text("When disabled, vmux uses normal default titlebar behavior for this window.")
                     .font(.caption)
                     .foregroundColor(.secondary)
 
@@ -3455,7 +3455,7 @@ struct SettingsView: View {
                         SettingsCardRow(
                             String(localized: "settings.app.language", defaultValue: "Language"),
                             subtitle: appLanguage != LanguageSettings.languageAtLaunch.rawValue
-                                ? String(localized: "settings.app.language.restartSubtitle", defaultValue: "Restart cmux to apply")
+                                ? String(localized: "settings.app.language.restartSubtitle", defaultValue: "Restart vmux to apply")
                                 : nil,
                             controlWidth: pickerColumnWidth
                         ) {
@@ -3553,7 +3553,7 @@ struct SettingsView: View {
 
                         SettingsCardRow(
                             String(localized: "settings.app.showInMenuBar", defaultValue: "Show in Menu Bar"),
-                            subtitle: String(localized: "settings.app.showInMenuBar.subtitle", defaultValue: "Keep cmux in the menu bar for unread notifications and quick actions.")
+                            subtitle: String(localized: "settings.app.showInMenuBar.subtitle", defaultValue: "Keep vmux in the menu bar for unread notifications and quick actions.")
                         ) {
                             Toggle("", isOn: $showMenuBarExtra)
                                 .labelsHidden()
@@ -3700,7 +3700,7 @@ struct SettingsView: View {
                             String(localized: "settings.app.telemetry", defaultValue: "Send anonymous telemetry"),
                             subtitle: sendAnonymousTelemetry != telemetryValueAtLaunch
                                 ? String(localized: "settings.app.telemetry.subtitleChanged", defaultValue: "Change takes effect on next launch.")
-                                : String(localized: "settings.app.telemetry.subtitle", defaultValue: "Share anonymized crash and usage data to help improve cmux.")
+                                : String(localized: "settings.app.telemetry.subtitle", defaultValue: "Share anonymized crash and usage data to help improve vmux.")
                         ) {
                             Toggle("", isOn: $sendAnonymousTelemetry)
                                 .labelsHidden()
@@ -3817,9 +3817,9 @@ struct SettingsView: View {
                         SettingsCardDivider()
 
                         SettingsCardRow(
-                            String(localized: "settings.app.openSidebarPRLinks", defaultValue: "Open Sidebar PR Links in cmux Browser"),
+                            String(localized: "settings.app.openSidebarPRLinks", defaultValue: "Open Sidebar PR Links in vmux Browser"),
                             subtitle: openSidebarPullRequestLinksInCmuxBrowser
-                                ? String(localized: "settings.app.openSidebarPRLinks.subtitleOn", defaultValue: "Clicks open inside cmux browser.")
+                                ? String(localized: "settings.app.openSidebarPRLinks.subtitleOn", defaultValue: "Clicks open inside vmux browser.")
                                 : String(localized: "settings.app.openSidebarPRLinks.subtitleOff", defaultValue: "Clicks open in your default browser.")
                         ) {
                             Toggle("", isOn: $openSidebarPullRequestLinksInCmuxBrowser)
@@ -4043,7 +4043,7 @@ struct SettingsView: View {
 
                         SettingsCardDivider()
 
-                        SettingsCardNote(String(localized: "settings.automation.claudeCode.note", defaultValue: "When enabled, cmux wraps the claude command to inject session tracking and notification hooks. Disable if you prefer to manage Claude Code hooks yourself."))
+                        SettingsCardNote(String(localized: "settings.automation.claudeCode.note", defaultValue: "When enabled, vmux wraps the claude command to inject session tracking and notification hooks. Disable if you prefer to manage Claude Code hooks yourself."))
                     }
 
                     SettingsCard {
@@ -4119,7 +4119,7 @@ struct SettingsView: View {
                         SettingsCardDivider()
 
                         SettingsCardRow(
-                            String(localized: "settings.browser.openTerminalLinks", defaultValue: "Open Terminal Links in cmux Browser"),
+                            String(localized: "settings.browser.openTerminalLinks", defaultValue: "Open Terminal Links in vmux Browser"),
                             subtitle: String(localized: "settings.browser.openTerminalLinks.subtitle", defaultValue: "When off, links clicked in terminal output open in your default browser.")
                         ) {
                             Toggle("", isOn: $openTerminalLinksInCmuxBrowser)
@@ -4196,7 +4196,7 @@ struct SettingsView: View {
                             Text(String(localized: "settings.browser.httpAllowlist", defaultValue: "HTTP Hosts Allowed in Embedded Browser"))
                                 .font(.system(size: 13, weight: .semibold))
 
-                            Text(String(localized: "settings.browser.httpAllowlist.description", defaultValue: "Controls which HTTP (non-HTTPS) hosts can open in cmux without a warning prompt. Defaults include localhost, 127.0.0.1, ::1, 0.0.0.0, and *.localtest.me."))
+                            Text(String(localized: "settings.browser.httpAllowlist.description", defaultValue: "Controls which HTTP (non-HTTPS) hosts can open in vmux without a warning prompt. Defaults include localhost, 127.0.0.1, ::1, 0.0.0.0, and *.localtest.me."))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
 

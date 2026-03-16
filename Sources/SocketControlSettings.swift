@@ -36,7 +36,7 @@ enum SocketControlMode: String, CaseIterable, Identifiable {
         case .off:
             return String(localized: "socketControl.off.description", defaultValue: "Disable the local control socket.")
         case .cmuxOnly:
-            return String(localized: "socketControl.cmuxOnly.description", defaultValue: "Only processes started inside cmux terminals can send commands.")
+            return String(localized: "socketControl.cmuxOnly.description", defaultValue: "Only processes started inside vmux terminals can send commands.")
         case .automation:
             return String(localized: "socketControl.automation.description", defaultValue: "Allow external local automation clients from this macOS user (no ancestry check).")
         case .password:
@@ -61,7 +61,7 @@ enum SocketControlMode: String, CaseIterable, Identifiable {
 }
 
 enum SocketControlPasswordStore {
-    static let directoryName = "cmux"
+    static let directoryName = "vmux"
     static let fileName = "socket-control-password"
     private static let keychainMigrationDefaultsKey = "socketControlPasswordMigrationVersion"
     private static let keychainMigrationVersion = 1
@@ -293,7 +293,7 @@ struct SocketControlSettings {
     static let socketPasswordEnvKey = "CMUX_SOCKET_PASSWORD"
     static let launchTagEnvKey = "CMUX_TAG"
     static let baseDebugBundleIdentifier = "com.cmuxterm.app.debug"
-    private static let socketDirectoryName = "cmux"
+    private static let socketDirectoryName = "vmux"
     private static let stableSocketFileName = "cmux.sock"
     private static let lastSocketPathFileName = "last-socket-path"
     static let legacyStableDefaultSocketPath = "/tmp/cmux.sock"

@@ -108,7 +108,7 @@ func sidebarSelectedWorkspaceForegroundNSColor(opacity: CGFloat) -> NSColor {
 #if compiler(>=6.2)
 @available(macOS 26.0, *)
 enum InternalTabDragConfigurationProvider {
-    // These drags only make sense inside cmux. Outside the app, Finder should
+    // These drags only make sense inside vmux. Outside the app, Finder should
     // reject them instead of materializing placeholder files from the payload.
     static let value = DragConfiguration(
         operationsWithinApp: .init(allowCopy: false, allowMove: true, allowDelete: false),
@@ -4733,7 +4733,7 @@ struct ContentView: View {
         contributions.append(
             CommandPaletteCommandContribution(
                 commandId: "palette.installCLI",
-                title: constant(String(localized: "command.installCLI.title", defaultValue: "Shell Command: Install 'cmux' in PATH")),
+                title: constant(String(localized: "command.installCLI.title", defaultValue: "Shell Command: Install 'vmux' in PATH")),
                 subtitle: constant(String(localized: "command.installCLI.subtitle", defaultValue: "CLI")),
                 keywords: ["install", "cli", "path", "shell", "command", "symlink"],
                 when: { _ in !(AppDelegate.shared?.isCmuxCLIInstalledInPATH() ?? false) }
@@ -4742,7 +4742,7 @@ struct ContentView: View {
         contributions.append(
             CommandPaletteCommandContribution(
                 commandId: "palette.uninstallCLI",
-                title: constant(String(localized: "command.uninstallCLI.title", defaultValue: "Shell Command: Uninstall 'cmux' from PATH")),
+                title: constant(String(localized: "command.uninstallCLI.title", defaultValue: "Shell Command: Uninstall 'vmux' from PATH")),
                 subtitle: constant(String(localized: "command.uninstallCLI.subtitle", defaultValue: "CLI")),
                 keywords: ["uninstall", "remove", "cli", "path", "shell", "command", "symlink"],
                 when: { _ in AppDelegate.shared?.isCmuxCLIInstalledInPATH() ?? false }
@@ -4888,7 +4888,7 @@ struct ContentView: View {
                 commandId: "palette.restartSocketListener",
                 title: constant(String(localized: "command.restartSocketListener.title", defaultValue: "Restart CLI Listener")),
                 subtitle: constant(String(localized: "command.restartSocketListener.subtitle", defaultValue: "Global")),
-                keywords: ["restart", "socket", "listener", "cli", "cmux", "control"]
+                keywords: ["restart", "socket", "listener", "cli", "vmux", "control"]
             )
         )
 
@@ -9558,7 +9558,7 @@ private struct SidebarHelpMenuButton: View {
     private var helpPopover: some View {
         VStack(alignment: .leading, spacing: 2) {
             helpOptionButton(
-                title: String(localized: "sidebar.help.welcome", defaultValue: "Welcome to cmux!"),
+                title: String(localized: "sidebar.help.welcome", defaultValue: "Welcome to vmux!"),
                 action: .welcome,
                 accessibilityIdentifier: "SidebarHelpMenuOptionWelcome",
                 isExternalLink: false

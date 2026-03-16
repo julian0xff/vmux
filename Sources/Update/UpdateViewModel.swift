@@ -258,7 +258,7 @@ class UpdateViewModel: ObservableObject {
             case 1, 2, 3001, 3002:
                 return String(localized: "update.error.signatureError.message", defaultValue: "The update's signature could not be verified. Please try again later.")
             case 1003, 1005, 4005:
-                return String(localized: "update.error.permissionError.message", defaultValue: "Move cmux into Applications and relaunch to enable updates.")
+                return String(localized: "update.error.permissionError.message", defaultValue: "Move vmux into Applications and relaunch to enable updates.")
             default:
                 break
             }
