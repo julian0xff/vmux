@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 import MarkdownUI
-
+import VmuxCore
 /// SwiftUI view that renders a MarkdownPanel's content using MarkdownUI.
 struct MarkdownPanelView: View {
     @ObservedObject var panel: MarkdownPanel

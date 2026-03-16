@@ -1,7 +1,7 @@
 import AppKit
 import Bonsplit
 import SwiftUI
-
+import VmuxCore
 struct BrowserSearchOverlay: View {
     let panelId: UUID
     @ObservedObject var searchState: BrowserSearchState

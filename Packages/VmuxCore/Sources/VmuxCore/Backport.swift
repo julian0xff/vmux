@@ -1,15 +1,19 @@
 import SwiftUI
 
 // Centralized backports for newer SwiftUI APIs we want to use when available.
-struct Backport<Content> {
-    let content: Content
+public struct Backport<Content> {
+    public let content: Content
+
+    public init(content: Content) {
+        self.content = content
+    }
 }
 
 extension View {
-    var backport: Backport<Self> { Backport(content: self) }
+    public var backport: Backport<Self> { Backport(content: self) }
 
     @ViewBuilder
-    func safeHelp(_ text: String) -> some View {
+    public func safeHelp(_ text: String) -> some View {
         if text.isEmpty {
             self
         } else {
@@ -19,17 +23,17 @@ extension View {
 }
 
 extension Scene {
-    var backport: Backport<Self> { Backport(content: self) }
+    public var backport: Backport<Self> { Backport(content: self) }
 }
 
 /// Result type for backported onKeyPress handler
-enum BackportKeyPressResult {
+public enum BackportKeyPressResult {
     case handled
     case ignored
 }
 
 extension Backport where Content: View {
-    func pointerStyle(_ style: BackportPointerStyle?) -> some View {
+    public func pointerStyle(_ style: BackportPointerStyle?) -> some View {
         #if canImport(AppKit)
         if #available(macOS 15, *) {
             return content.pointerStyle(style?.official)
@@ -42,7 +46,7 @@ extension Backport where Content: View {
     }
 
     /// Backported onKeyPress that works on macOS 14+ and is a no-op on macOS 13.
-    func onKeyPress(_ key: KeyEquivalent, action: @escaping (EventModifiers) -> BackportKeyPressResult) -> some View {
+    public func onKeyPress(_ key: KeyEquivalent, action: @escaping (EventModifiers) -> BackportKeyPressResult) -> some View {
         #if canImport(AppKit)
         if #available(macOS 14, *) {
             return content.onKeyPress(key, phases: [.down, .repeat], action: { keyPress in
@@ -60,7 +64,7 @@ extension Backport where Content: View {
     }
 }
 
-enum BackportPointerStyle {
+public enum BackportPointerStyle {
     case `default`
     case grabIdle
     case grabActive
@@ -76,7 +80,7 @@ enum BackportPointerStyle {
 
     #if canImport(AppKit)
     @available(macOS 15, *)
-    var official: PointerStyle {
+    public var official: PointerStyle {
         switch self {
         case .default: return .default
         case .grabIdle: return .grabIdle

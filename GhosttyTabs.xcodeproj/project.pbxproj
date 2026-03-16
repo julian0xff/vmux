@@ -500,6 +500,7 @@
 					A5001231 /* Sparkle */,
 					A5001261 /* Bonsplit */,
 					A5001291 /* MarkdownUI */,
+					VC000002 /* VmuxCore */,
 				);
 			name = GhosttyTabs;
 			productName = GhosttyTabs;
@@ -600,6 +601,7 @@
 					A5001232 /* XCRemoteSwiftPackageReference "Sparkle" */,
 					A5001292 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
 					A5001260 /* XCLocalSwiftPackageReference "bonsplit" */,
+					VC000001 /* XCLocalSwiftPackageReference "VmuxCore" */,
 				);
 			productRefGroup = A5001042 /* Products */;
 			projectDirPath = "";
@@ -624,7 +626,7 @@
 					A5009010 /* SidebarFolderModel.swift in Sources */,
 					A5009012 /* SidebarFolderStore.swift in Sources */,
 					B9000018A1B2C3D4E5F60719 /* WindowDragHandleView.swift in Sources */,
-					A50012F1 /* Backport.swift in Sources */,
+					/* Backport.swift moved to VmuxCore package */
 					A50012F3 /* KeyboardShortcutSettings.swift in Sources */,
 					A50012F5 /* KeyboardLayout.swift in Sources */,
 						A5001003 /* TabManager.swift in Sources */,
@@ -647,7 +649,7 @@
 				A5001303 /* SurfaceSearchOverlay.swift in Sources */,
 				A5008371 /* BrowserSearchOverlay.swift in Sources */,
 				A5008373 /* BrowserFindJavaScript.swift in Sources */,
-				A5001400 /* Panel.swift in Sources */,
+				/* Panel.swift moved to VmuxCore package */
 				A5001401 /* TerminalPanel.swift in Sources */,
 				A5001402 /* BrowserPanel.swift in Sources */,
 				A5001403 /* TerminalPanelView.swift in Sources */,
@@ -1015,6 +1017,10 @@
 				isa = XCLocalSwiftPackageReference;
 				relativePath = vendor/bonsplit;
 			};
+			VC000001 /* XCLocalSwiftPackageReference "VmuxCore" */ = {
+				isa = XCLocalSwiftPackageReference;
+				relativePath = Packages/VmuxCore;
+			};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -1032,6 +1038,11 @@
 				isa = XCSwiftPackageProductDependency;
 				package = A5001292 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */;
 				productName = MarkdownUI;
+			};
+			VC000002 /* VmuxCore */ = {
+				isa = XCSwiftPackageProductDependency;
+				package = VC000001 /* XCLocalSwiftPackageReference "VmuxCore" */;
+				productName = VmuxCore;
 			};
 /* End XCSwiftPackageProductDependency section */
 

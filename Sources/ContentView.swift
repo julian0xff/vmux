@@ -5,7 +5,7 @@ import SwiftUI
 import ObjectiveC
 import UniformTypeIdentifiers
 import WebKit
-
+import VmuxCore
 private extension Color {
     init?(hex: String) {
         let hex = hex.trimmingCharacters(in: .init(charactersIn: "#"))

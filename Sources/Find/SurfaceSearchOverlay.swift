@@ -1,7 +1,7 @@
 import AppKit
 import Bonsplit
 import SwiftUI
-
+import VmuxCore
 private extension NSView {
     func vmuxAncestor<T: NSView>(of type: T.Type) -> T? {
         var current: NSView? = self

@@ -3,7 +3,7 @@ import Combine
 import WebKit
 import AppKit
 import Bonsplit
-
+import VmuxCore
 enum GhosttyBackgroundTheme {
     static func clampedOpacity(_ opacity: Double) -> CGFloat {
         CGFloat(max(0.0, min(1.0, opacity)))

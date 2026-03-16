@@ -1,6 +1,6 @@
 import Bonsplit
 import SwiftUI
-
+import VmuxCore
 struct NotificationsPage: View {
     @EnvironmentObject var notificationStore: TerminalNotificationStore
     @EnvironmentObject var tabManager: TabManager

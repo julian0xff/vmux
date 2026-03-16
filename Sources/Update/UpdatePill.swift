@@ -2,7 +2,7 @@ import AppKit
 import Bonsplit
 import Foundation
 import SwiftUI
-
+import VmuxCore
 /// A pill-shaped button that displays update status and provides access to update actions.
 struct UpdatePill: View {
     @ObservedObject var model: UpdateViewModel

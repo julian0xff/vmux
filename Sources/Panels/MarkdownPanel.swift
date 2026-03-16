@@ -1,6 +1,6 @@
 import Foundation
 import Combine
-
+import VmuxCore
 /// A panel that renders a markdown file with live file-watching.
 /// When the file changes on disk, the content is automatically reloaded.
 @MainActor

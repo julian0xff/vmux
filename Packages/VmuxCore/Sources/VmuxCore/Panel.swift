@@ -26,27 +26,34 @@ public enum PanelFocusIntent: Equatable {
     case browser(BrowserPanelFocusIntent)
 }
 
-enum FocusFlashCurve: Equatable {
+public enum FocusFlashCurve: Equatable {
     case easeIn
     case easeOut
 }
 
-struct FocusFlashSegment: Equatable {
-    let delay: TimeInterval
-    let duration: TimeInterval
-    let targetOpacity: Double
-    let curve: FocusFlashCurve
+public struct FocusFlashSegment: Equatable {
+    public let delay: TimeInterval
+    public let duration: TimeInterval
+    public let targetOpacity: Double
+    public let curve: FocusFlashCurve
+
+    public init(delay: TimeInterval, duration: TimeInterval, targetOpacity: Double, curve: FocusFlashCurve) {
+        self.delay = delay
+        self.duration = duration
+        self.targetOpacity = targetOpacity
+        self.curve = curve
+    }
 }
 
-enum FocusFlashPattern {
-    static let values: [Double] = [0, 1, 0, 1, 0]
-    static let keyTimes: [Double] = [0, 0.25, 0.5, 0.75, 1]
-    static let duration: TimeInterval = 0.9
-    static let curves: [FocusFlashCurve] = [.easeOut, .easeIn, .easeOut, .easeIn]
-    static let ringInset: Double = 6
-    static let ringCornerRadius: Double = 10
+public enum FocusFlashPattern {
+    public static let values: [Double] = [0, 1, 0, 1, 0]
+    public static let keyTimes: [Double] = [0, 0.25, 0.5, 0.75, 1]
+    public static let duration: TimeInterval = 0.9
+    public static let curves: [FocusFlashCurve] = [.easeOut, .easeIn, .easeOut, .easeIn]
+    public static let ringInset: Double = 6
+    public static let ringCornerRadius: Double = 10
 
-    static var segments: [FocusFlashSegment] {
+    public static var segments: [FocusFlashSegment] {
         let stepCount = min(curves.count, values.count - 1, keyTimes.count - 1)
         return (0..<stepCount).map { index in
             let startTime = keyTimes[index]
@@ -117,34 +124,34 @@ extension Panel {
     public var displayIcon: String? { nil }
     public var isDirty: Bool { false }
 
-    func captureFocusIntent(in window: NSWindow?) -> PanelFocusIntent {
+    public func captureFocusIntent(in window: NSWindow?) -> PanelFocusIntent {
         _ = window
         return preferredFocusIntentForActivation()
     }
 
-    func preferredFocusIntentForActivation() -> PanelFocusIntent {
+    public func preferredFocusIntentForActivation() -> PanelFocusIntent {
         .panel
     }
 
-    func prepareFocusIntentForActivation(_ intent: PanelFocusIntent) {
+    public func prepareFocusIntentForActivation(_ intent: PanelFocusIntent) {
         _ = intent
     }
 
     @discardableResult
-    func restoreFocusIntent(_ intent: PanelFocusIntent) -> Bool {
+    public func restoreFocusIntent(_ intent: PanelFocusIntent) -> Bool {
         guard intent == .panel else { return false }
         focus()
         return true
     }
 
-    func ownedFocusIntent(for responder: NSResponder, in window: NSWindow) -> PanelFocusIntent? {
+    public func ownedFocusIntent(for responder: NSResponder, in window: NSWindow) -> PanelFocusIntent? {
         _ = responder
         _ = window
         return nil
     }
 
     @discardableResult
-    func yieldFocusIntent(_ intent: PanelFocusIntent, in window: NSWindow) -> Bool {
+    public func yieldFocusIntent(_ intent: PanelFocusIntent, in window: NSWindow) -> Bool {
         _ = intent
         _ = window
         return false

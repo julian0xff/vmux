@@ -3,7 +3,7 @@ import Carbon.HIToolbox
 import Foundation
 import Bonsplit
 import WebKit
-
+import VmuxCore
 /// Unix socket-based controller for programmatic terminal control
 /// Allows automated testing and external control of terminal tabs
 @MainActor

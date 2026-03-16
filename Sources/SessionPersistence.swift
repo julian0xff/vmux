@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import Bonsplit
+import VmuxCore
 
 enum SessionSnapshotSchema {
     static let currentVersion = 1

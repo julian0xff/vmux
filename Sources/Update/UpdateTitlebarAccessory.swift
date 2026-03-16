@@ -2,7 +2,7 @@ import AppKit
 import Bonsplit
 import Combine
 import SwiftUI
-
+import VmuxCore
 final class NonDraggableHostingView<Content: View>: NSHostingView<Content> {
     override var mouseDownCanMoveWindow: Bool { false }
 }

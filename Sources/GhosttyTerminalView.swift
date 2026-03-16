@@ -8,7 +8,7 @@ import Darwin
 import Bonsplit
 import IOSurface
 import UniformTypeIdentifiers
-
+import VmuxCore
 #if os(macOS)
 func vmuxShouldUseTransparentBackgroundWindow() -> Bool {
     let defaults = UserDefaults.standard
