@@ -2272,7 +2272,7 @@ struct ContentView: View {
             }
             if selectedTabIds.isEmpty, let selectedId = tabManager.selectedTabId {
                 selectedTabIds = [selectedId]
-                lastSidebarSelectionIndex = tabManager.tabs.firstIndex { $0.id == selectedId }
+                lastSidebarSelectionIndex = tabManager.visibleSidebarWorkspaceIndex(of: selectedId)
             }
             syncSidebarSelectedWorkspaceIds()
             applyUITestSidebarSelectionIfNeeded(tabs: tabManager.tabs)
@@ -2306,7 +2306,7 @@ struct ContentView: View {
                 // Ensure sidebar selection is valid.
                 if selectedTabIds.isEmpty, let selectedId = tabManager.selectedTabId {
                     selectedTabIds = [selectedId]
-                    lastSidebarSelectionIndex = tabManager.tabs.firstIndex { $0.id == selectedId }
+                    lastSidebarSelectionIndex = tabManager.visibleSidebarWorkspaceIndex(of: selectedId)
                     didRecover = true
                 }
 
@@ -2343,7 +2343,7 @@ struct ContentView: View {
             guard let newValue else { return }
             if selectedTabIds.count <= 1 {
                 selectedTabIds = [newValue]
-                lastSidebarSelectionIndex = tabManager.tabs.firstIndex { $0.id == newValue }
+                lastSidebarSelectionIndex = tabManager.visibleSidebarWorkspaceIndex(of: newValue)
             }
             updateTitlebarText()
         })
@@ -2444,9 +2444,10 @@ struct ContentView: View {
             if selectedTabIds.isEmpty, let selectedId = tabManager.selectedTabId {
                 selectedTabIds = [selectedId]
             }
-            if let lastIndex = lastSidebarSelectionIndex, lastIndex >= tabs.count {
+            if let lastIndex = lastSidebarSelectionIndex,
+               lastIndex >= tabManager.folderStore.visibleWorkspaceIds.count {
                 if let selectedId = tabManager.selectedTabId {
-                    lastSidebarSelectionIndex = tabs.firstIndex { $0.id == selectedId }
+                    lastSidebarSelectionIndex = tabManager.visibleSidebarWorkspaceIndex(of: selectedId)
                 } else {
                     lastSidebarSelectionIndex = nil
                 }
@@ -6606,7 +6607,7 @@ struct ContentView: View {
 
         let selectedIds = Set(indices.map { tabs[$0].id })
         selectedTabIds = selectedIds
-        lastSidebarSelectionIndex = lastIndex
+        lastSidebarSelectionIndex = tabManager.visibleSidebarWorkspaceIndex(of: tabs[lastIndex].id)
         tabManager.selectWorkspace(tabs[lastIndex])
         sidebarSelectionState.selection = .tabs
         didApplyUITestSidebarSelection = true
@@ -7820,6 +7821,7 @@ struct VerticalTabsSidebar: View {
                             let flatItems = folderStore.flatVisibleItems
                             let tabsById = Dictionary(uniqueKeysWithValues: tabManager.tabs.map { ($0.id, $0) })
                             let workspaceIndicesById = Dictionary(uniqueKeysWithValues: tabManager.tabs.enumerated().map { ($0.element.id, $0.offset) })
+                            let orderedSelectedWorkspaceIds = tabManager.tabs.compactMap { selectedTabIds.contains($0.id) ? $0.id : nil }
                             ForEach(flatItems) { item in
                                 switch item.content {
                                 case .workspace(let visualIndex):
@@ -7848,6 +7850,7 @@ struct VerticalTabsSidebar: View {
                                                 let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
                                                 return trimmed.isEmpty ? nil : trimmed
                                             }(),
+                                            orderedSelectedWorkspaceIds: orderedSelectedWorkspaceIds,
                                             rowSpacing: tabRowSpacing,
                                             setSelectionToTabs: { selection = .tabs },
                                             selectedTabIds: $selectedTabIds,
@@ -10023,11 +10026,10 @@ private struct SidebarEmptyArea: View {
             .onTapGesture(count: 2) {
                 let ws = tabManager.addWorkspace(placementOverride: .end)
                 // Always place at root, never inside a folder
-                tabManager.folderStore.removeWorkspace(ws.id)
-                tabManager.folderStore.insertWorkspaceAtEnd(ws.id)
+                tabManager.moveSidebarItem(ws.id, toParent: nil, atIndex: Int.max)
                 if let selectedId = tabManager.selectedTabId {
                     selectedTabIds = [selectedId]
-                    lastSidebarSelectionIndex = tabManager.tabs.firstIndex { $0.id == selectedId }
+                    lastSidebarSelectionIndex = tabManager.visibleSidebarWorkspaceIndex(of: selectedId)
                 }
                 selection = .tabs
             }
@@ -10160,6 +10162,7 @@ private struct TabItemView: View, Equatable {
         lhs.accessibilityWorkspaceCount == rhs.accessibilityWorkspaceCount &&
         lhs.unreadCount == rhs.unreadCount &&
         lhs.latestNotificationText == rhs.latestNotificationText &&
+        lhs.orderedSelectedWorkspaceIds == rhs.orderedSelectedWorkspaceIds &&
         lhs.rowSpacing == rhs.rowSpacing &&
         lhs.showsModifierShortcutHints == rhs.showsModifierShortcutHints
     }
@@ -10179,6 +10182,7 @@ private struct TabItemView: View, Equatable {
     let accessibilityWorkspaceCount: Int
     let unreadCount: Int
     let latestNotificationText: String?
+    let orderedSelectedWorkspaceIds: [UUID]
     let rowSpacing: CGFloat
     let setSelectionToTabs: () -> Void
     @Binding var selectedTabIds: Set<UUID>
@@ -10860,7 +10864,7 @@ private struct TabItemView: View, Equatable {
         .disabled(targetIds.isEmpty)
 
         // Merge workspace(s) here — shown when selected workspaces differ from right-clicked target
-        let mergeSourceIds = selectedTabIds.filter { $0 != tab.id }
+        let mergeSourceIds = orderedSelectedWorkspaceIds.filter { $0 != tab.id }
         if !mergeSourceIds.isEmpty {
             let mergeLabel = mergeSourceIds.count == 1
                 ? String(localized: "contextMenu.mergeWorkspaceHere", defaultValue: "Merge Workspace Here")
@@ -10983,7 +10987,7 @@ private struct TabItemView: View, Equatable {
     private func moveBy(_ delta: Int) {
         guard tabManager.moveWorkspaceInSidebarOrder(tab.id, by: delta) else { return }
         selectedTabIds = [tab.id]
-        lastSidebarSelectionIndex = tabManager.tabs.firstIndex { $0.id == tab.id }
+        lastSidebarSelectionIndex = tabManager.visibleSidebarWorkspaceIndex(of: tab.id)
         tabManager.selectTab(tab)
         setSelectionToTabs()
     }
@@ -11003,10 +11007,13 @@ private struct TabItemView: View, Equatable {
         let isShift = modifiers.contains(.shift)
         let wasSelected = tabManager.selectedTabId == tab.id
 
-        if isShift, let lastIndex = lastSidebarSelectionIndex {
-            let lower = min(lastIndex, tabIndex)
-            let upper = max(lastIndex, tabIndex)
-            let rangeIds = tabManager.tabs[lower...upper].map { $0.id }
+        if isShift,
+           let lastIndex = lastSidebarSelectionIndex,
+           tabManager.folderStore.visibleWorkspaceIds.indices.contains(lastIndex) {
+            let visibleWorkspaceIds = tabManager.folderStore.visibleWorkspaceIds
+            let lower = min(lastIndex, visibleIndex)
+            let upper = max(lastIndex, visibleIndex)
+            let rangeIds = visibleWorkspaceIds[lower...upper]
             if isCommand {
                 selectedTabIds.formUnion(rangeIds)
             } else {
@@ -11022,7 +11029,7 @@ private struct TabItemView: View, Equatable {
             selectedTabIds = [tab.id]
         }
 
-        lastSidebarSelectionIndex = tabIndex
+        lastSidebarSelectionIndex = visibleIndex
         tabManager.selectTab(tab)
         if wasSelected, !isCommand, !isShift {
             tabManager.dismissNotificationOnDirectInteraction(
@@ -11089,7 +11096,7 @@ private struct TabItemView: View, Equatable {
             selectedTabIds = [selectedId]
         }
         if let selectedId = tabManager.selectedTabId {
-            lastSidebarSelectionIndex = tabManager.tabs.firstIndex { $0.id == selectedId }
+            lastSidebarSelectionIndex = tabManager.visibleSidebarWorkspaceIndex(of: selectedId)
         }
     }
 
@@ -11852,8 +11859,8 @@ private struct SidebarFolderHeaderView: View {
         .contextMenu {
             Button(String(localized: "contextMenu.newWorkspaceHere", defaultValue: "New Workspace Here")) {
                 let ws = tabManager.addWorkspace()
-                tabManager.folderStore.removeWorkspace(ws.id)
-                tabManager.folderStore.insertWorkspaceIntoFolder(ws.id, folderId: folder.id)
+                tabManager.moveSidebarItem(ws.id, toParent: folder.id, atIndex: Int.max)
+                selectedTabIds = [ws.id]
             }
 
             Button(String(localized: "contextMenu.renameFolder", defaultValue: "Rename Folder")) {
@@ -11890,7 +11897,7 @@ private struct SidebarFolderHeaderView: View {
             }
 
             Button(String(localized: "contextMenu.moveToTop", defaultValue: "Move to Top")) {
-                folderStore.moveItem(folder.id, toParent: nil, atIndex: 0)
+                tabManager.moveSidebarItem(folder.id, toParent: nil, atIndex: 0)
             }
 
             let allFolders = folderStore.allFolders()
@@ -11942,9 +11949,17 @@ private struct SidebarFolderHeaderView: View {
                 selectedTabIds.remove(folder.id)
             }
             Button(String(localized: "contextMenu.closeFolder", defaultValue: "Close Folder"), role: .destructive) {
-                let workspaceIds = folderStore.collectAndRemoveFolder(id: folder.id)
+                let workspaceIds = SidebarTreeUtils.allWorkspaceIds(in: folder.children)
                 selectedTabIds.remove(folder.id)
-                for wsId in workspaceIds {
+                if workspaceIds.count == tabManager.tabs.count {
+                    tabManager.deleteSidebarFolder(folder.id)
+                } else {
+                    _ = folderStore.collectAndRemoveFolder(id: folder.id)
+                }
+                let survivorId = workspaceIds.count == tabManager.tabs.count
+                    ? (tabManager.selectedTabId.flatMap { workspaceIds.contains($0) ? $0 : nil } ?? workspaceIds.last)
+                    : nil
+                for wsId in workspaceIds where wsId != survivorId {
                     if let ws = tabManager.tabs.first(where: { $0.id == wsId }) {
                         tabManager.closeWorkspace(ws)
                     }
@@ -11962,7 +11977,8 @@ private struct SidebarFolderHeaderView: View {
             folderStore: folderStore,
             tabManager: tabManager,
             draggedTabId: $draggedTabId,
-            dropIndicator: $dropIndicator
+            dropIndicator: $dropIndicator,
+            selectedTabIds: $selectedTabIds
         ))
     }
 
@@ -12014,23 +12030,30 @@ private struct SidebarFolderDropDelegate: DropDelegate {
     let tabManager: TabManager
     @Binding var draggedTabId: UUID?
     @Binding var dropIndicator: SidebarDropIndicator?
+    @Binding var selectedTabIds: Set<UUID>
 
     func validateDrop(info: DropInfo) -> Bool {
         guard let draggedTabId else { return false }
-        // Don't allow dropping onto self
-        if draggedTabId == folderId { return false }
-        // Don't allow a folder to be dropped into its own descendant
-        if SidebarTreeUtils.isDescendant(folderId, of: draggedTabId, in: folderStore.root) { return false }
-
         // Accept sidebar tab drags or folder drags
-        if info.hasItemsConforming(to: SidebarTabDragPayload.dropContentTypes) { return true }
-        if info.hasItemsConforming(to: SidebarFolderDragPayload.dropContentTypes) { return true }
-        // Accept bonsplit tab drags
-        if info.hasItemsConforming(to: BonsplitTabDragPayload.dropContentTypes),
-           BonsplitTabDragPayload.currentTransfer() != nil {
-            return true
+        guard info.hasItemsConforming(to: SidebarTabDragPayload.dropContentTypes) ||
+              info.hasItemsConforming(to: SidebarFolderDragPayload.dropContentTypes) else {
+            return false
         }
-        return false
+
+        let itemIdsToMove = draggedItemIds(for: draggedTabId)
+        for itemId in itemIdsToMove {
+            if itemId == folderId { return false }
+            if SidebarTreeUtils.isDescendant(folderId, of: itemId, in: folderStore.root) { return false }
+        }
+        return !itemIdsToMove.isEmpty
+    }
+
+    private func draggedItemIds(for draggedTabId: UUID) -> [UUID] {
+        let visibleIds = folderStore.flatVisibleItems.map(\.id)
+        if selectedTabIds.contains(draggedTabId) && selectedTabIds.count > 1 {
+            return visibleIds.filter { selectedTabIds.contains($0) }
+        }
+        return [draggedTabId]
     }
 
     func dropUpdated(info: DropInfo) -> DropProposal? {
@@ -12053,9 +12076,15 @@ private struct SidebarFolderDropDelegate: DropDelegate {
         if let draggedTabId,
            (info.hasItemsConforming(to: SidebarTabDragPayload.dropContentTypes) ||
             info.hasItemsConforming(to: SidebarFolderDragPayload.dropContentTypes)) {
+            let itemIds = draggedItemIds(for: draggedTabId)
             self.draggedTabId = nil
-            if draggedTabId == folderId { return false }
-            tabManager.moveSidebarItem(draggedTabId, toParent: folderId, atIndex: Int.max)
+            if itemIds.count > 1 {
+                tabManager.moveSidebarItems(itemIds, toParent: folderId, atIndex: Int.max)
+            } else if let itemId = itemIds.first {
+                tabManager.moveSidebarItem(itemId, toParent: folderId, atIndex: Int.max)
+            } else {
+                return false
+            }
             return true
         }
 
@@ -12420,8 +12449,11 @@ private struct SidebarUnifiedDropDelegate: DropDelegate {
 
     // MARK: - Drag type detection
 
-    private func isSidebarTabDrag(_ info: DropInfo) -> Bool {
-        info.hasItemsConforming(to: SidebarTabDragPayload.dropContentTypes) && draggedTabId != nil
+    private func isSidebarItemDrag(_ info: DropInfo) -> Bool {
+        (
+            info.hasItemsConforming(to: SidebarTabDragPayload.dropContentTypes) ||
+            info.hasItemsConforming(to: SidebarFolderDragPayload.dropContentTypes)
+        ) && draggedTabId != nil
     }
 
     private func isBonsplitTabDrag(_ info: DropInfo) -> Bool {
@@ -12432,7 +12464,9 @@ private struct SidebarUnifiedDropDelegate: DropDelegate {
 
     func validateDrop(info: DropInfo) -> Bool {
         if isBonsplitTabDrag(info) { return true }
-        let hasType = info.hasItemsConforming(to: [SidebarTabDragPayload.typeIdentifier])
+        let hasType =
+            info.hasItemsConforming(to: SidebarTabDragPayload.dropContentTypes) ||
+            info.hasItemsConforming(to: SidebarFolderDragPayload.dropContentTypes)
         let hasDrag = draggedTabId != nil
         #if DEBUG
         dlog("sidebar.validateDrop target=\(targetTabId?.uuidString.prefix(5) ?? "end") hasType=\(hasType) hasDrag=\(hasDrag)")
@@ -12445,7 +12479,7 @@ private struct SidebarUnifiedDropDelegate: DropDelegate {
             bonsplitDropTargetId = targetTabId
             return
         }
-        guard isSidebarTabDrag(info) else { return }
+        guard isSidebarItemDrag(info) else { return }
         #if DEBUG
         dlog("sidebar.dropEntered target=\(targetTabId?.uuidString.prefix(5) ?? "end")")
         #endif
@@ -12457,7 +12491,7 @@ private struct SidebarUnifiedDropDelegate: DropDelegate {
         if bonsplitDropTargetId == targetTabId {
             bonsplitDropTargetId = nil
         }
-        guard isSidebarTabDrag(info) || isBonsplitTabDrag(info) else { return }
+        guard isSidebarItemDrag(info) || isBonsplitTabDrag(info) else { return }
 #if DEBUG
         dlog("sidebar.dropExited target=\(targetTabId?.uuidString.prefix(5) ?? "end")")
 #endif
@@ -12471,7 +12505,7 @@ private struct SidebarUnifiedDropDelegate: DropDelegate {
             bonsplitDropTargetId = targetTabId
             return DropProposal(operation: .move)
         }
-        guard isSidebarTabDrag(info) else { return nil }
+        guard isSidebarItemDrag(info) else { return nil }
         dragAutoScrollController.updateFromDragLocation()
         updateDropIndicator(for: info)
 #if DEBUG
@@ -12635,7 +12669,7 @@ private struct SidebarUnifiedDropDelegate: DropDelegate {
     private func syncSidebarSelection(preferredSelectedTabId: UUID? = nil) {
         let selectedId = preferredSelectedTabId ?? tabManager.selectedTabId
         if let selectedId {
-            lastSidebarSelectionIndex = tabManager.tabs.firstIndex { $0.id == selectedId }
+            lastSidebarSelectionIndex = tabManager.visibleSidebarWorkspaceIndex(of: selectedId)
         } else {
             lastSidebarSelectionIndex = nil
         }

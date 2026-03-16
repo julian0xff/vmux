@@ -1156,6 +1156,10 @@ class TabManager: ObservableObject {
         return true
     }
 
+    func visibleSidebarWorkspaceIndex(of workspaceId: UUID) -> Int? {
+        folderStore.visibleWorkspaceIds.firstIndex(of: workspaceId)
+    }
+
     private func insertWorkspaceIntoFolderTree(_ workspaceId: UUID, orderedTabs: [Workspace], at insertIndex: Int) {
         // If a folder is selected, insert into that folder
         for selectedId in sidebarSelectedItemIds {
