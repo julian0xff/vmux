@@ -3,7 +3,6 @@ import SwiftUI
 import Bonsplit
 import CoreServices
 import UserNotifications
-import Sentry
 import WebKit
 import Combine
 import ObjectiveC.runtime
@@ -2041,8 +2040,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private var socketListenerHealthTimer: DispatchSourceTimer?
     private var socketListenerHealthCheckInFlight = false
     private static let socketListenerHealthCheckInterval: DispatchTimeInterval = .seconds(2)
-    private var lastSocketListenerUnhealthyCaptureAt: Date = .distantPast
-    private static let socketListenerUnhealthyCaptureCooldown: TimeInterval = 60
     private let sessionPersistenceQueue = DispatchQueue(
         label: "com.vmuxterm.app.sessionPersistence",
         qos: .utility
@@ -2131,7 +2128,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     func applicationDidFinishLaunching(_ notification: Notification) {
         let env = ProcessInfo.processInfo.environment
         let isRunningUnderXCTest = isRunningUnderXCTest(env)
-        let telemetryEnabled = TelemetrySettings.enabledForCurrentLaunch
 
         DistributedNotificationCenter.default().addObserver(
             self,
@@ -2157,43 +2153,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             self?.writeUITestDiagnosticsIfNeeded(stage: "after1s")
         }
 #endif
-
-        if telemetryEnabled {
-            // Pre-warm locale before Sentry to avoid a startup data race.
-            // Locale initialization (os.locale.ensureLocale / NSLocale._preferredLanguages)
-            // on the main thread can race with Sentry's background init thread
-            // calling posix.getenv, causing a SIGSEGV ~134ms after launch.
-            // Forcing locale access here before SentrySDK.start eliminates the race.
-            // Related to: #836
-            _ = Locale.current
-            _ = NSLocale.preferredLanguages
-
-            SentrySDK.start { options in
-                options.dsn = "https://ecba1ec90ecaee02a102fba931b6d2b3@o4507547940749312.ingest.us.sentry.io/4510796264636416"
-                #if DEBUG
-                options.environment = "development"
-                options.debug = true
-                #else
-                options.environment = "production"
-                options.debug = false
-                #endif
-                options.sendDefaultPii = false
-
-                // Performance tracing (10% of transactions)
-                options.tracesSampleRate = 0.1
-                // Keep app-hang tracking enabled, but avoid reporting short main-thread stalls
-                // as hangs in normal user interaction flows.
-                options.appHangTimeoutInterval = 8.0
-                // Attach stack traces to all events
-                options.attachStacktrace = true
-                // Avoid recursively capturing failed requests from Sentry's own ingestion endpoint.
-                options.enableCaptureFailedRequests = false
-            }
-        }
-
-        if telemetryEnabled && !isRunningUnderXCTest {
-            PostHogAnalytics.shared.startIfNeeded()
-        }
 
         let forceDuplicateLaunchObserver = env["CMUX_UI_TEST_ENABLE_DUPLICATE_LAUNCH_OBSERVER"] == "1"
 
@@ -2303,13 +2262,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 #endif
 
     func applicationDidBecomeActive(_ notification: Notification) {
-        sentryBreadcrumb("app.didBecomeActive", category: "lifecycle", data: [
-            "tabCount": tabManager?.tabs.count ?? 0
-        ])
-        if TelemetrySettings.enabledForCurrentLaunch && !isRunningUnderXCTestCached {
-            PostHogAnalytics.shared.trackActive(reason: "didBecomeActive")
-        }
-
         guard let notificationStore else { return }
         notificationStore.handleApplicationDidBecomeActive()
         guard let tabManager else { return }
@@ -2338,9 +2290,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         TerminalController.shared.stop()
         VSCodeServeWebController.shared.stop()
         BrowserHistoryStore.shared.flushPendingSaves()
-        if TelemetrySettings.enabledForCurrentLaunch {
-            PostHogAnalytics.shared.flush()
-        }
         notificationStore?.clearAll()
         enableSuddenTerminationIfNeeded()
     }
@@ -2947,11 +2896,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         guard let tabManager,
               let config = socketListenerConfigurationIfEnabled() else { return }
         let restartPath = TerminalController.shared.activeSocketPath(preferredPath: config.path)
-        sentryBreadcrumb("socket.listener.restart", category: "socket", data: [
-            "mode": config.mode.rawValue,
-            "path": restartPath,
-            "source": source
-        ])
         TerminalController.shared.stop()
         TerminalController.shared.start(tabManager: tabManager, socketPath: restartPath, accessMode: config.mode)
     }
@@ -3006,38 +2950,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         guard let config = socketListenerConfigurationIfEnabled() else { return }
         let currentExpectedSocketPath = TerminalController.shared.activeSocketPath(preferredPath: config.path)
         guard currentExpectedSocketPath == expectedSocketPath else { return }
-        guard !health.isHealthy else {
-            lastSocketListenerUnhealthyCaptureAt = .distantPast
-            return
-        }
-        let failureSignals = health.failureSignals
-        var data: [String: Any] = [
-            "source": source,
-            "path": currentExpectedSocketPath,
-            "isRunning": health.isRunning ? 1 : 0,
-            "acceptLoopAlive": health.acceptLoopAlive ? 1 : 0,
-            "socketPathMatches": health.socketPathMatches ? 1 : 0,
-            "socketPathExists": health.socketPathExists ? 1 : 0,
-            "socketProbePerformed": health.socketProbePerformed ? 1 : 0,
-            "failureSignals": failureSignals
-        ]
-        if let socketConnectable = health.socketConnectable {
-            data["socketConnectable"] = socketConnectable ? 1 : 0
-        }
-        if let socketConnectErrno = health.socketConnectErrno {
-            data["socketConnectErrno"] = Int(socketConnectErrno)
-        }
-        sentryBreadcrumb("socket.listener.unhealthy", category: "socket", data: data)
-        let now = Date()
-        if now.timeIntervalSince(lastSocketListenerUnhealthyCaptureAt) >= Self.socketListenerUnhealthyCaptureCooldown {
-            lastSocketListenerUnhealthyCaptureAt = now
-            sentryCaptureWarning(
-                "socket.listener.unhealthy",
-                category: "socket",
-                data: data,
-                contextKey: "socket_listener_health"
-            )
-        }
+        guard !health.isHealthy else { return }
         restartSocketListenerIfEnabled(source: source)
     }
 
@@ -6367,9 +6280,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         )
     }
 
-    @objc func triggerSentryTestCrash(_ sender: Any?) {
-        SentrySDK.crash()
-    }
 #endif
 
 #if DEBUG
@@ -9681,26 +9591,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         scheduler: @escaping (@escaping @Sendable () -> Void) -> Void = AppDelegate.enqueueLaunchServicesRegistrationWork,
         register: @escaping (CFURL) -> OSStatus = { url in
             LSRegisterURL(url, true)
-        },
-        breadcrumb: @escaping (_ message: String, _ data: [String: Any]) -> Void = { message, data in
-            sentryBreadcrumb(message, category: "startup", data: data)
         }
     ) {
         let normalizedURL = bundleURL.standardizedFileURL
-        breadcrumb("launchservices.register.schedule", [
-            "bundlePath": normalizedURL.path
-        ])
 
         scheduler {
-            let startedAt = CFAbsoluteTimeGetCurrent()
             let registerStatus = register(normalizedURL as CFURL)
-            let durationMs = Int(((CFAbsoluteTimeGetCurrent() - startedAt) * 1000).rounded())
-
-            breadcrumb("launchservices.register.complete", [
-                "bundlePath": normalizedURL.path,
-                "status": Int(registerStatus),
-                "durationMs": durationMs
-            ])
 
             if registerStatus != noErr {
                 NSLog("LaunchServices registration failed (status: \(registerStatus)) for \(normalizedURL.path)")
@@ -9712,14 +9608,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     func scheduleLaunchServicesBundleRegistrationForTesting(
         bundleURL: URL,
         scheduler: @escaping (@escaping @Sendable () -> Void) -> Void,
-        register: @escaping (CFURL) -> OSStatus,
-        breadcrumb: @escaping (_ message: String, _ data: [String: Any]) -> Void = { _, _ in }
+        register: @escaping (CFURL) -> OSStatus
     ) {
         scheduleLaunchServicesBundleRegistration(
             bundleURL: bundleURL,
             scheduler: scheduler,
-            register: register,
-            breadcrumb: breadcrumb
+            register: register
         )
     }
 #endif

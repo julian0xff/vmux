@@ -60,9 +60,6 @@ class TerminalController {
     private nonisolated static let socketProbePollTimeoutMs: Int32 = 100
     private nonisolated static let socketProbePollAttempts = 3
     private nonisolated static let socketProbePollRetryBackoffUs: useconds_t = 50_000
-    private nonisolated static let socketListenerFailureCaptureCooldown: TimeInterval = 60
-    private nonisolated static let socketListenerFailureCaptureLock = NSLock()
-    private nonisolated(unsafe) static var socketListenerFailureLastCapturedAt: [String: Date] = [:]
     private nonisolated static let unixSocketPathMaxLength: Int = {
         var addr = sockaddr_un()
         // Reserve one byte for the null terminator.
@@ -476,66 +473,6 @@ class TerminalController {
         return info.kp_eproc.e_ppid
     }
 
-    private nonisolated func socketListenerEventData(
-        stage: String,
-        errnoCode: Int32? = nil,
-        extra: [String: Any] = [:]
-    ) -> [String: Any] {
-        let snapshot = listenerStateSnapshot()
-        var data: [String: Any] = [
-            "stage": stage,
-            "path": snapshot.socketPath,
-            "isRunning": snapshot.isRunning ? 1 : 0,
-            "acceptLoopAlive": snapshot.acceptLoopAlive ? 1 : 0,
-            "serverSocket": Int(snapshot.serverSocket),
-            "activeGeneration": snapshot.activeGeneration
-        ]
-        if let errnoCode {
-            data["errno"] = Int(errnoCode)
-            data["errnoDescription"] = String(cString: strerror(errnoCode))
-        }
-        for (key, value) in extra {
-            data[key] = value
-        }
-        return data
-    }
-
-    private nonisolated func reportSocketListenerFailure(
-        message: String,
-        stage: String,
-        errnoCode: Int32? = nil,
-        extra: [String: Any] = [:]
-    ) {
-        let data = socketListenerEventData(stage: stage, errnoCode: errnoCode, extra: extra)
-        sentryBreadcrumb(message, category: "socket", data: data)
-        guard Self.shouldCaptureSocketListenerFailure(
-            message: message,
-            stage: stage,
-            path: data["path"] as? String ?? "",
-            errnoCode: errnoCode
-        ) else {
-            return
-        }
-        sentryCaptureError(message, category: "socket", data: data, contextKey: "socket_listener")
-    }
-
-    private nonisolated static func shouldCaptureSocketListenerFailure(
-        message: String,
-        stage: String,
-        path: String,
-        errnoCode: Int32?
-    ) -> Bool {
-        let key = "\(message)|\(stage)|\(path)|\(errnoCode.map(String.init) ?? "none")"
-        let now = Date()
-        socketListenerFailureCaptureLock.lock()
-        defer { socketListenerFailureCaptureLock.unlock() }
-        if let lastCapturedAt = socketListenerFailureLastCapturedAt[key],
-           now.timeIntervalSince(lastCapturedAt) < socketListenerFailureCaptureCooldown {
-            return false
-        }
-        socketListenerFailureLastCapturedAt[key] = now
-        return true
-    }
 
     nonisolated static func acceptErrorClassification(errnoCode: Int32) -> String {
         switch errnoCode {
@@ -581,14 +518,6 @@ class TerminalController {
             acceptFailureBackoffMilliseconds(consecutiveFailures: consecutiveFailures),
             acceptFailureMinimumRearmDelayMs
         )
-    }
-
-    nonisolated static func shouldEmitAcceptFailureBreadcrumb(consecutiveFailures: Int) -> Bool {
-        guard consecutiveFailures > 0 else { return false }
-        if consecutiveFailures <= 3 {
-            return true
-        }
-        return (consecutiveFailures & (consecutiveFailures - 1)) == 0
     }
 
     nonisolated static func shouldUnlinkSocketPathAfterAcceptLoopCleanup(
@@ -786,11 +715,6 @@ class TerminalController {
         guard newServerSocket >= 0 else {
             let errnoCode = errno
             print("TerminalController: Failed to create socket")
-            reportSocketListenerFailure(
-                message: "socket.listener.start.failed",
-                stage: "create_socket",
-                errnoCode: errnoCode
-            )
             return
         }
 
@@ -802,16 +726,6 @@ class TerminalController {
                errnoCode: failedErrnoCode
            ),
            fallbackPath != failedPath {
-            sentryBreadcrumb(
-                "socket.listener.path.fallback",
-                category: "socket",
-                data: [
-                    "requestedPath": failedPath,
-                    "fallbackPath": fallbackPath,
-                    "stage": failedStage,
-                    "errno": Int(failedErrnoCode)
-                ]
-            )
             activeSocketPath = fallbackPath
             withListenerState {
                 self.socketPath = activeSocketPath
@@ -825,28 +739,12 @@ class TerminalController {
             withListenerState {
                 self.socketPath = activeSocketPath
             }
-        case .pathTooLong(let failedPath):
+        case .pathTooLong:
             close(newServerSocket)
-            reportSocketListenerFailure(
-                message: "socket.listener.start.failed",
-                stage: "bind_path_too_long",
-                errnoCode: ENAMETOOLONG,
-                extra: [
-                    "path": failedPath,
-                    "pathLength": failedPath.utf8.count,
-                    "maxPathLength": Self.unixSocketPathMaxLength
-                ]
-            )
             return
         case .failure(let failedPath, let failedStage, let failedErrnoCode):
             print("TerminalController: Failed to bind socket")
             close(newServerSocket)
-            reportSocketListenerFailure(
-                message: "socket.listener.start.failed",
-                stage: failedStage,
-                errnoCode: failedErrnoCode,
-                extra: ["path": failedPath]
-            )
             return
         }
 
@@ -857,11 +755,6 @@ class TerminalController {
             let errnoCode = errno
             print("TerminalController: Failed to listen on socket")
             close(newServerSocket)
-            reportSocketListenerFailure(
-                message: "socket.listener.start.failed",
-                stage: "listen",
-                errnoCode: errnoCode
-            )
             return
         }
 
@@ -880,16 +773,6 @@ class TerminalController {
         listenerActivated = true
         let listenerSocket = newServerSocket
         print("TerminalController: Listening on \(activeSocketPath)")
-        sentryBreadcrumb(
-            "socket.listener.listening",
-            category: "socket",
-            data: [
-                "path": activeSocketPath,
-                "mode": accessMode.rawValue,
-                "generation": generation,
-                "backlog": Self.socketListenBacklog
-            ]
-        )
 
         // Wire batched port scanner results back to workspace state.
         PortScanner.shared.onPortsUpdated = { [weak self] workspaceId, panelId, ports in
@@ -1072,15 +955,6 @@ class TerminalController {
             print(
                 "TerminalController: Failed to set socket permissions to \(String(permissions, radix: 8)) for \(currentSocketPath)"
             )
-            sentryBreadcrumb(
-                "socket.listener.permissions.failed",
-                category: "socket",
-                data: socketListenerEventData(
-                    stage: "chmod",
-                    errnoCode: errnoCode,
-                    extra: ["permissions": String(permissions, radix: 8)]
-                )
-            )
         }
     }
 
@@ -1185,18 +1059,6 @@ class TerminalController {
             return
         }
 
-        sentryBreadcrumb(
-            "socket.listener.accept_loop.started",
-            category: "socket",
-            data: socketListenerEventData(
-                stage: "accept_loop_start",
-                extra: [
-                    "generation": generation,
-                    "listenerSocket": Int(listenerSocket)
-                ]
-            )
-        )
-
         var exitReason = "stopped"
         var lastAcceptErrno: Int32?
         var lastAcceptErrnoClass = "none"
@@ -1236,25 +1098,6 @@ class TerminalController {
                 unlinkSocketPathIfListenerStillInactive(pathToUnlink)
             }
 
-            if cleanup.shouldCaptureExit {
-                let data = socketListenerEventData(
-                    stage: "accept_loop_exit",
-                    errnoCode: lastAcceptErrno,
-                    extra: [
-                        "reason": exitReason,
-                        "generation": generation,
-                        "errnoClass": lastAcceptErrnoClass,
-                        "rearmRequested": rearmRequested ? 1 : 0
-                    ]
-                )
-                sentryBreadcrumb("socket.listener.accept_loop.exited", category: "socket", data: data)
-                sentryCaptureError(
-                    "socket.listener.accept_loop.exited",
-                    category: "socket",
-                    data: data,
-                    contextKey: "socket_listener"
-                )
-            }
         }
 
         var consecutiveFailures = 0
@@ -1291,23 +1134,6 @@ class TerminalController {
                 let rearmDelayMs = Self.acceptFailureRearmDelayMilliseconds(
                     consecutiveFailures: consecutiveFailures
                 )
-
-                if Self.shouldEmitAcceptFailureBreadcrumb(consecutiveFailures: consecutiveFailures) {
-                    sentryBreadcrumb(
-                        "socket.listener.accept.failed",
-                        category: "socket",
-                        data: socketListenerEventData(
-                            stage: "accept",
-                            errnoCode: errnoCode,
-                            extra: [
-                                "consecutiveFailures": consecutiveFailures,
-                                "generation": generation,
-                                "errnoClass": errnoClass,
-                                "backoffMs": backoffMs
-                            ]
-                        )
-                    )
-                }
 
                 let shouldRearmForFatalErrno = Self.shouldRearmListenerForAcceptError(errnoCode: errnoCode)
                 let shouldRearmForPersistentFailures = Self.shouldRearmForConsecutiveAcceptFailures(
@@ -1368,20 +1194,6 @@ class TerminalController {
             }) else { return }
 
             let restartMode = self.accessMode
-
-            sentryBreadcrumb(
-                "socket.listener.rearm.requested",
-                category: "socket",
-                data: self.socketListenerEventData(
-                    stage: "accept_rearm",
-                    errnoCode: errnoCode,
-                    extra: [
-                        "generation": generation,
-                        "consecutiveFailures": consecutiveFailures,
-                        "rearmDelayMs": delayMs
-                    ]
-                )
-            )
 
             self.stop()
             self.start(tabManager: tabManager, socketPath: restartPath, accessMode: restartMode)
