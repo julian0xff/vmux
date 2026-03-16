@@ -7,6 +7,10 @@
 	objects = {
 
 		/* Begin PBXBuildFile section */
+		UI000001 /* WindowEffects.swift in Sources */ = {isa = PBXBuildFile; fileRef = UI000011 /* WindowEffects.swift */; };
+		UI000002 /* CommandPaletteSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = UI000012 /* CommandPaletteSearch.swift */; };
+		UI000003 /* SidebarDragDrop.swift in Sources */ = {isa = PBXBuildFile; fileRef = UI000013 /* SidebarDragDrop.swift */; };
+		UI000004 /* SidebarAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = UI000014 /* SidebarAppearance.swift */; };
 			A5001001 /* vmuxApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001011 /* vmuxApp.swift */; };
 			A5001002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001012 /* ContentView.swift */; };
 			E62155868BB29FEB5DAAAF25 /* SidebarSelectionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AD52285508B1D6A9875E7B3 /* SidebarSelectionState.swift */; };
@@ -153,7 +157,11 @@
 			A5001000 /* vmux.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = vmux.app; sourceTree = BUILT_PRODUCTS_DIR; };
 			F1000002A1B2C3D4E5F60718 /* vmuxTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = vmuxTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 			7E7E6EF344A568AC7FEE3715 /* vmuxUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = vmuxUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-			A5001011 /* vmuxApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = vmuxApp.swift; sourceTree = "<group>"; };
+			UI000011 /* WindowEffects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/WindowEffects.swift; sourceTree = "<group>"; };
+		UI000012 /* CommandPaletteSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/CommandPaletteSearch.swift; sourceTree = "<group>"; };
+		UI000013 /* SidebarDragDrop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/SidebarDragDrop.swift; sourceTree = "<group>"; };
+		UI000014 /* SidebarAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/SidebarAppearance.swift; sourceTree = "<group>"; };
+		A5001011 /* vmuxApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = vmuxApp.swift; sourceTree = "<group>"; };
 			A5001012 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 			9AD52285508B1D6A9875E7B3 /* SidebarSelectionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarSelectionState.swift; sourceTree = "<group>"; };
 			A5009011 /* SidebarFolderModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarFolderModel.swift; sourceTree = "<group>"; };
@@ -352,6 +360,10 @@
 				children = (
 					A5001011 /* vmuxApp.swift */,
 					A5001012 /* ContentView.swift */,
+					UI000011 /* WindowEffects.swift */,
+					UI000012 /* CommandPaletteSearch.swift */,
+					UI000013 /* SidebarDragDrop.swift */,
+					UI000014 /* SidebarAppearance.swift */,
 					9AD52285508B1D6A9875E7B3 /* SidebarSelectionState.swift */,
 					A5009011 /* SidebarFolderModel.swift */,
 					A5009013 /* SidebarFolderStore.swift */,
@@ -628,6 +640,10 @@
 				files = (
 					A5001001 /* vmuxApp.swift in Sources */,
 					A5001002 /* ContentView.swift in Sources */,
+					UI000001 /* WindowEffects.swift in Sources */,
+					UI000002 /* CommandPaletteSearch.swift in Sources */,
+					UI000003 /* SidebarDragDrop.swift in Sources */,
+					UI000004 /* SidebarAppearance.swift in Sources */,
 					/* SidebarSelectionState.swift moved to VmuxCore package */
 					/* SidebarFolderModel.swift moved to VmuxCore package */
 					/* SidebarFolderStore.swift moved to VmuxCore package */
