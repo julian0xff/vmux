@@ -1,10 +1,14 @@
 import SwiftUI
 
 /// A badge view that displays the current state of an update operation.
-struct UpdateBadge: View {
+public struct UpdateBadge: View {
     @ObservedObject var model: UpdateViewModel
 
-    var body: some View {
+    public init(model: UpdateViewModel) {
+        self.model = model
+    }
+
+    public var body: some View {
         badgeContent
             .accessibilityLabel(model.text)
     }

@@ -4,9 +4,9 @@ import Combine
 import SwiftUI
 
 /// Controller for managing Sparkle updates in vmux.
-class UpdateController {
-    private(set) var updater: SPUUpdater
-    private let userDriver: UpdateDriver
+public class UpdateController {
+    public private(set) var updater: SPUUpdater
+    public let userDriver: UpdateDriver
     private var installCancellable: AnyCancellable?
     private var attemptInstallCancellable: AnyCancellable?
     private var didObserveAttemptUpdateProgress: Bool = false
@@ -17,16 +17,16 @@ class UpdateController {
     private let readyRetryDelay: TimeInterval = 0.25
     private let readyRetryCount: Int = 20
 
-    var viewModel: UpdateViewModel {
+    public var viewModel: UpdateViewModel {
         userDriver.viewModel
     }
 
     /// True if we're force-installing an update.
-    var isInstalling: Bool {
+    public var isInstalling: Bool {
         installCancellable != nil
     }
 
-    init() {
+    public init() {
         // Default to manual update checks. This also prevents Sparkle from prompting at startup.
         let defaults = UserDefaults.standard
         defaults.register(defaults: [
@@ -55,7 +55,7 @@ class UpdateController {
     }
 
     /// Start the updater. If startup fails, the error is shown via the custom UI.
-    func startUpdaterIfNeeded() {
+    public func startUpdaterIfNeeded() {
         guard !didStartUpdater else { return }
         ensureSparkleInstallationCache()
 #if DEBUG
@@ -96,7 +96,7 @@ class UpdateController {
     }
 
     /// Force install the current update by auto-confirming all installable states.
-    func installUpdate() {
+    public func installUpdate() {
         guard viewModel.state.isInstallable else { return }
         guard installCancellable == nil else { return }
 
@@ -111,7 +111,7 @@ class UpdateController {
     }
 
     /// Check for updates and auto-confirm install if one is found.
-    func attemptUpdate() {
+    public func attemptUpdate() {
         stopAttemptUpdateMonitoring()
         didObserveAttemptUpdateProgress = false
 
@@ -140,7 +140,7 @@ class UpdateController {
     }
 
     /// Check for updates (used by the menu item).
-    @objc func checkForUpdates() {
+    @objc public func checkForUpdates() {
         UpdateLogStore.shared.append("checkForUpdates invoked (state=\(viewModel.state.isIdle ? "idle" : "busy"))")
         checkForUpdatesWhenReady(retries: readyRetryCount)
     }
@@ -162,7 +162,7 @@ class UpdateController {
     }
 
     /// Check for updates once the updater is ready (used by UI tests).
-    func checkForUpdatesWhenReady(retries: Int = 10) {
+    public func checkForUpdatesWhenReady(retries: Int = 10) {
         readyCheckWorkItem?.cancel()
         readyCheckWorkItem = nil
         startUpdaterIfNeeded()
@@ -199,7 +199,7 @@ class UpdateController {
     }
 
     /// Validate the check for updates menu item.
-    func validateMenuItem(_ item: NSMenuItem) -> Bool {
+    public func validateMenuItem(_ item: NSMenuItem) -> Bool {
         if item.action == #selector(checkForUpdates) {
             // Always allow user-initiated checks; we start Sparkle lazily on first use.
             return true

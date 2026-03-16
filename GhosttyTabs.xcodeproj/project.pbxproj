@@ -47,18 +47,18 @@
 			A50012F1 /* Backport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A50012F0 /* Backport.swift */; };
 			/* KeyboardShortcutSettings.swift moved to VmuxCore package */
 			A50012F5 /* KeyboardLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = A50012F4 /* KeyboardLayout.swift */; };
-			A5001201 /* UpdateController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001211 /* UpdateController.swift */; };
-		A5001202 /* UpdateDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001212 /* UpdateDelegate.swift */; };
-		A5001203 /* UpdateDriver.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001213 /* UpdateDriver.swift */; };
-		A5001204 /* UpdateViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001214 /* UpdateViewModel.swift */; };
-		A5001205 /* UpdatePill.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001215 /* UpdatePill.swift */; };
-		A5001206 /* UpdateBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001216 /* UpdateBadge.swift */; };
-		A500120A /* UpdateTiming.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001220 /* UpdateTiming.swift */; };
-		A500120B /* UpdateTestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001221 /* UpdateTestSupport.swift */; };
-		A500120E /* UpdateTestURLProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001224 /* UpdateTestURLProtocol.swift */; };
+			/* A5001201 UpdateController.swift moved to VmuxUpdate package */
+		/* A5001202 UpdateDelegate.swift moved to VmuxUpdate package */
+		/* A5001203 UpdateDriver.swift moved to VmuxUpdate package */
+		/* A5001204 UpdateViewModel.swift moved to VmuxUpdate package */
+		/* A5001205 UpdatePill.swift moved to VmuxUpdate package */
+		/* A5001206 UpdateBadge.swift moved to VmuxUpdate package */
+		/* A500120A UpdateTiming.swift moved to VmuxUpdate package */
+		/* A500120B UpdateTestSupport.swift moved to VmuxUpdate package */
+		/* A500120E UpdateTestURLProtocol.swift moved to VmuxUpdate package */
 		A500120C /* WindowAccessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001222 /* WindowAccessor.swift */; };
-		A500120D /* UpdateLogStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001223 /* UpdateLogStore.swift */; };
-		A5001207 /* UpdatePopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001217 /* UpdatePopoverView.swift */; };
+		/* A500120D UpdateLogStore.swift moved to VmuxUpdate package */
+		/* A5001207 UpdatePopoverView.swift moved to VmuxUpdate package */
 		A5001208 /* UpdateTitlebarAccessory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001218 /* UpdateTitlebarAccessory.swift */; };
 		A5001209 /* WindowToolbarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001219 /* WindowToolbarController.swift */; };
 		A5001240 /* WindowDecorationsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001241 /* WindowDecorationsController.swift */; };
@@ -503,6 +503,7 @@
 					VC000002 /* VmuxCore */,
 					VS000002 /* VmuxSession */,
 					VK000002 /* VmuxSocket */,
+					VU000002 /* VmuxUpdate */,
 				);
 			name = GhosttyTabs;
 			productName = GhosttyTabs;
@@ -606,6 +607,7 @@
 					VC000001 /* XCLocalSwiftPackageReference "VmuxCore" */,
 					VS000001 /* XCLocalSwiftPackageReference "VmuxSession" */,
 					VK000001 /* XCLocalSwiftPackageReference "VmuxSocket" */,
+					VU000001 /* XCLocalSwiftPackageReference "VmuxUpdate" */,
 				);
 			productRefGroup = A5001042 /* Products */;
 			projectDirPath = "";
@@ -662,17 +664,17 @@
 				A5001421 /* MarkdownPanelView.swift in Sources */,
 				A5001500 /* VmuxWebView.swift in Sources */,
 				A5001405 /* PanelContentView.swift in Sources */,
-				A5001201 /* UpdateController.swift in Sources */,
-				A5001202 /* UpdateDelegate.swift in Sources */,
-				A5001203 /* UpdateDriver.swift in Sources */,
-				A5001204 /* UpdateViewModel.swift in Sources */,
-				A5001205 /* UpdatePill.swift in Sources */,
-				A5001206 /* UpdateBadge.swift in Sources */,
-				A500120A /* UpdateTiming.swift in Sources */,
-				A500120B /* UpdateTestSupport.swift in Sources */,
-				A500120E /* UpdateTestURLProtocol.swift in Sources */,
-				A500120D /* UpdateLogStore.swift in Sources */,
-				A5001207 /* UpdatePopoverView.swift in Sources */,
+				/* UpdateController.swift moved to VmuxUpdate package */
+				/* UpdateDelegate.swift moved to VmuxUpdate package */
+				/* UpdateDriver.swift moved to VmuxUpdate package */
+				/* UpdateViewModel.swift moved to VmuxUpdate package */
+				/* UpdatePill.swift moved to VmuxUpdate package */
+				/* UpdateBadge.swift moved to VmuxUpdate package */
+				/* UpdateTiming.swift moved to VmuxUpdate package */
+				/* UpdateTestSupport.swift moved to VmuxUpdate package */
+				/* UpdateTestURLProtocol.swift moved to VmuxUpdate package */
+				/* UpdateLogStore.swift moved to VmuxUpdate package */
+				/* UpdatePopoverView.swift moved to VmuxUpdate package */
 				A5001208 /* UpdateTitlebarAccessory.swift in Sources */,
 				A5001209 /* WindowToolbarController.swift in Sources */,
 				A5001240 /* WindowDecorationsController.swift in Sources */,
@@ -1033,6 +1035,10 @@
 				isa = XCLocalSwiftPackageReference;
 				relativePath = Packages/VmuxSocket;
 			};
+			VU000001 /* XCLocalSwiftPackageReference "VmuxUpdate" */ = {
+				isa = XCLocalSwiftPackageReference;
+				relativePath = Packages/VmuxUpdate;
+			};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -1065,6 +1071,11 @@
 				isa = XCSwiftPackageProductDependency;
 				package = VK000001 /* XCLocalSwiftPackageReference "VmuxSocket" */;
 				productName = VmuxSocket;
+			};
+			VU000002 /* VmuxUpdate */ = {
+				isa = XCSwiftPackageProductDependency;
+				package = VU000001 /* XCLocalSwiftPackageReference "VmuxUpdate" */;
+				productName = VmuxUpdate;
 			};
 /* End XCSwiftPackageProductDependency section */
 

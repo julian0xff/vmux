@@ -4,6 +4,7 @@ import Darwin
 import Bonsplit
 import VmuxCore
 import VmuxSocket
+import VmuxUpdate
 import UniformTypeIdentifiers
 
 @main

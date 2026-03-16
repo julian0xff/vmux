@@ -1,10 +1,10 @@
 import Sparkle
 import Cocoa
 
-enum UpdateFeedResolver {
-    static let fallbackFeedURL = "https://github.com/manaflow-ai/vmux/releases/latest/download/appcast.xml"
+public enum UpdateFeedResolver {
+    public static let fallbackFeedURL = "https://github.com/manaflow-ai/vmux/releases/latest/download/appcast.xml"
 
-    static func resolvedFeedURLString(infoFeedURL: String?) -> (url: String, isNightly: Bool, usedFallback: Bool) {
+    public static func resolvedFeedURLString(infoFeedURL: String?) -> (url: String, isNightly: Bool, usedFallback: Bool) {
         guard let infoFeedURL, !infoFeedURL.isEmpty else {
             return (fallbackFeedURL, false, true)
         }
@@ -13,7 +13,7 @@ enum UpdateFeedResolver {
 }
 
 extension UpdateDriver: SPUUpdaterDelegate {
-    func feedURLString(for updater: SPUUpdater) -> String? {
+    public func feedURLString(for updater: SPUUpdater) -> String? {
 #if DEBUG
         let env = ProcessInfo.processInfo.environment
         if let override = env["VMUX_UI_TEST_FEED_URL"], !override.isEmpty {
@@ -34,7 +34,7 @@ extension UpdateDriver: SPUUpdaterDelegate {
 
     /// Called when an update is scheduled to install silently,
     /// which occurs when automatic download is enabled.
-    func updater(_ updater: SPUUpdater, willInstallUpdateOnQuit item: SUAppcastItem, immediateInstallationBlock immediateInstallHandler: @escaping () -> Void) -> Bool {
+    public func updater(_ updater: SPUUpdater, willInstallUpdateOnQuit item: SUAppcastItem, immediateInstallationBlock immediateInstallHandler: @escaping () -> Void) -> Bool {
         viewModel.state = .installing(.init(
             isAutoUpdate: true,
             retryTerminatingApplication: immediateInstallHandler,
@@ -45,7 +45,7 @@ extension UpdateDriver: SPUUpdaterDelegate {
         return true
     }
 
-    func updater(_ updater: SPUUpdater, didFinishLoading appcast: SUAppcast) {
+    public func updater(_ updater: SPUUpdater, didFinishLoading appcast: SUAppcast) {
         let count = appcast.items.count
         let firstVersion = appcast.items.first?.displayVersionString ?? ""
         if firstVersion.isEmpty {
@@ -55,7 +55,7 @@ extension UpdateDriver: SPUUpdaterDelegate {
         }
     }
 
-    func updater(_ updater: SPUUpdater, didFindValidUpdate item: SUAppcastItem) {
+    public func updater(_ updater: SPUUpdater, didFindValidUpdate item: SUAppcastItem) {
         let version = item.displayVersionString
         let fileURL = item.fileURL?.absoluteString ?? ""
         if fileURL.isEmpty {
@@ -65,7 +65,7 @@ extension UpdateDriver: SPUUpdaterDelegate {
         }
     }
 
-    func updaterDidNotFindUpdate(_ updater: SPUUpdater, error: Error) {
+    public func updaterDidNotFindUpdate(_ updater: SPUUpdater, error: Error) {
         let nsError = error as NSError
         let reasonValue = (nsError.userInfo[SPUNoUpdateFoundReasonKey] as? NSNumber)?.intValue
         let reason = reasonValue.map { SPUNoUpdateFoundReason(rawValue: OSStatus($0)) } ?? nil
@@ -81,13 +81,8 @@ extension UpdateDriver: SPUUpdaterDelegate {
     }
 
     @MainActor
-    func updaterWillRelaunchApplication(_ updater: SPUUpdater) {
-        AppDelegate.shared?.persistSessionForUpdateRelaunch()
-        TerminalController.shared.stop()
-        NSApp.invalidateRestorableState()
-        for window in NSApp.windows {
-            window.invalidateRestorableState()
-        }
+    public func updaterWillRelaunchApplication(_ updater: SPUUpdater) {
+        onWillRelaunchApplication?()
     }
 }
 

@@ -1,15 +1,15 @@
 #if DEBUG
 import Foundation
 
-final class UpdateTestURLProtocol: URLProtocol {
-    static let host = "vmux.test"
-    static let appcastPath = "/appcast.xml"
-    static let updatePath = "/vmux-test.zip"
+public final class UpdateTestURLProtocol: URLProtocol {
+    public static let host = "vmux.test"
+    public static let appcastPath = "/appcast.xml"
+    public static let updatePath = "/vmux-test.zip"
 
     private static var isRegistered = false
     private static let registrationLock = NSLock()
 
-    static func registerIfNeeded() {
+    public static func registerIfNeeded() {
         registrationLock.lock()
         defer { registrationLock.unlock() }
         guard !isRegistered else { return }
@@ -17,17 +17,17 @@ final class UpdateTestURLProtocol: URLProtocol {
         isRegistered = true
     }
 
-    override class func canInit(with request: URLRequest) -> Bool {
+    override public class func canInit(with request: URLRequest) -> Bool {
         guard let url = request.url else { return false }
         guard url.host == host else { return false }
         return true
     }
 
-    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+    override public class func canonicalRequest(for request: URLRequest) -> URLRequest {
         request
     }
 
-    override func startLoading() {
+    override public func startLoading() {
         guard let url = request.url else {
             client?.urlProtocol(self, didFailWithError: URLError(.badURL))
             return
@@ -55,7 +55,7 @@ final class UpdateTestURLProtocol: URLProtocol {
         client?.urlProtocolDidFinishLoading(self)
     }
 
-    override func stopLoading() {}
+    override public func stopLoading() {}
 
     private func payload(for url: URL) -> (Int, Data, String) {
         switch url.path {

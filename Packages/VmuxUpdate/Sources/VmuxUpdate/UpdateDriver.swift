@@ -2,20 +2,28 @@ import Cocoa
 import Sparkle
 
 /// SPUUserDriver that updates the view model for custom update UI.
-class UpdateDriver: NSObject, SPUUserDriver {
-    let viewModel: UpdateViewModel
+public class UpdateDriver: NSObject, SPUUserDriver {
+    public let viewModel: UpdateViewModel
     private let minimumCheckDuration: TimeInterval = UpdateTiming.minimumCheckDisplayDuration
     private var lastCheckStart: Date?
     private var pendingCheckTransition: DispatchWorkItem?
     private var checkTimeoutWorkItem: DispatchWorkItem?
     private var lastFeedURLString: String?
 
-    init(viewModel: UpdateViewModel, hostBundle _: Bundle) {
+    /// Closure called when an updater error occurs and the user taps "Retry".
+    /// Set from the app to wire retry back to the update check.
+    public var onRetryUpdateCheck: (() -> Void)?
+
+    /// Closure called just before the updater relaunches the application.
+    /// Set from the app to persist session state and stop the terminal engine.
+    public var onWillRelaunchApplication: (() -> Void)?
+
+    public init(viewModel: UpdateViewModel, hostBundle _: Bundle) {
         self.viewModel = viewModel
         super.init()
     }
 
-    func show(_ request: SPUUpdatePermissionRequest,
+    public func show(_ request: SPUUpdatePermissionRequest,
               reply: @escaping @Sendable (SUUpdatePermissionResponse) -> Void) {
 #if DEBUG
         let env = ProcessInfo.processInfo.environment
@@ -35,43 +43,42 @@ class UpdateDriver: NSObject, SPUUserDriver {
         }
     }
 
-    func showUserInitiatedUpdateCheck(cancellation: @escaping () -> Void) {
+    public func showUserInitiatedUpdateCheck(cancellation: @escaping () -> Void) {
         UpdateLogStore.shared.append("show user-initiated update check")
         beginChecking(cancel: cancellation)
     }
 
-    func showUpdateFound(with appcastItem: SUAppcastItem,
+    public func showUpdateFound(with appcastItem: SUAppcastItem,
                          state: SPUUserUpdateState,
                          reply: @escaping @Sendable (SPUUserUpdateChoice) -> Void) {
         UpdateLogStore.shared.append("show update found: \(appcastItem.displayVersionString)")
         setStateAfterMinimumCheckDelay(.updateAvailable(.init(appcastItem: appcastItem, reply: reply)))
     }
 
-    func showUpdateReleaseNotes(with downloadData: SPUDownloadData) {
+    public func showUpdateReleaseNotes(with downloadData: SPUDownloadData) {
         // vmux uses Sparkle's UI for release notes links instead.
     }
 
-    func showUpdateReleaseNotesFailedToDownloadWithError(_ error: any Error) {
+    public func showUpdateReleaseNotesFailedToDownloadWithError(_ error: any Error) {
         // Release notes are handled via link buttons.
     }
 
-    func showUpdateNotFoundWithError(_ error: any Error,
+    public func showUpdateNotFoundWithError(_ error: any Error,
                                      acknowledgement: @escaping () -> Void) {
         UpdateLogStore.shared.append("show update not found: \(formatErrorForLog(error))")
         setStateAfterMinimumCheckDelay(.notFound(.init(acknowledgement: acknowledgement)))
     }
 
-    func showUpdaterError(_ error: any Error,
+    public func showUpdaterError(_ error: any Error,
                           acknowledgement: @escaping () -> Void) {
         let details = formatErrorForLog(error)
         UpdateLogStore.shared.append("show updater error: \(details)")
         setState(.error(.init(
             error: error,
-            retry: { [weak viewModel] in
-                viewModel?.state = .idle
-                DispatchQueue.main.async {
-                    guard let delegate = NSApp.delegate as? AppDelegate else { return }
-                    delegate.checkForUpdates(nil)
+            retry: { [weak self] in
+                self?.viewModel.state = .idle
+                DispatchQueue.main.async { [weak self] in
+                    self?.onRetryUpdateCheck?()
                 }
             },
             dismiss: { [weak viewModel] in
@@ -83,7 +90,7 @@ class UpdateDriver: NSObject, SPUUserDriver {
         acknowledgement()
     }
 
-    func showDownloadInitiated(cancellation: @escaping () -> Void) {
+    public func showDownloadInitiated(cancellation: @escaping () -> Void) {
         UpdateLogStore.shared.append("show download initiated")
         setState(.downloading(.init(
             cancel: cancellation,
@@ -91,7 +98,7 @@ class UpdateDriver: NSObject, SPUUserDriver {
             progress: 0)))
     }
 
-    func showDownloadDidReceiveExpectedContentLength(_ expectedContentLength: UInt64) {
+    public func showDownloadDidReceiveExpectedContentLength(_ expectedContentLength: UInt64) {
         UpdateLogStore.shared.append("download expected length: \(expectedContentLength)")
         guard case let .downloading(downloading) = viewModel.state else {
             return
@@ -103,7 +110,7 @@ class UpdateDriver: NSObject, SPUUserDriver {
             progress: 0)))
     }
 
-    func showDownloadDidReceiveData(ofLength length: UInt64) {
+    public func showDownloadDidReceiveData(ofLength length: UInt64) {
         UpdateLogStore.shared.append("download received data: \(length)")
         guard case let .downloading(downloading) = viewModel.state else {
             return
@@ -115,22 +122,22 @@ class UpdateDriver: NSObject, SPUUserDriver {
             progress: downloading.progress + length)))
     }
 
-    func showDownloadDidStartExtractingUpdate() {
+    public func showDownloadDidStartExtractingUpdate() {
         UpdateLogStore.shared.append("show extraction started")
         setState(.extracting(.init(progress: 0)))
     }
 
-    func showExtractionReceivedProgress(_ progress: Double) {
+    public func showExtractionReceivedProgress(_ progress: Double) {
         UpdateLogStore.shared.append(String(format: "show extraction progress: %.2f", progress))
         setState(.extracting(.init(progress: progress)))
     }
 
-    func showReady(toInstallAndRelaunch reply: @escaping @Sendable (SPUUserUpdateChoice) -> Void) {
+    public func showReady(toInstallAndRelaunch reply: @escaping @Sendable (SPUUserUpdateChoice) -> Void) {
         UpdateLogStore.shared.append("show ready to install")
         reply(.install)
     }
 
-    func showInstallingUpdate(withApplicationTerminated applicationTerminated: Bool, retryTerminatingApplication: @escaping () -> Void) {
+    public func showInstallingUpdate(withApplicationTerminated applicationTerminated: Bool, retryTerminatingApplication: @escaping () -> Void) {
         UpdateLogStore.shared.append("show installing update")
         setState(.installing(.init(
             retryTerminatingApplication: retryTerminatingApplication,
@@ -140,17 +147,17 @@ class UpdateDriver: NSObject, SPUUserDriver {
         )))
     }
 
-    func showUpdateInstalledAndRelaunched(_ relaunched: Bool, acknowledgement: @escaping () -> Void) {
+    public func showUpdateInstalledAndRelaunched(_ relaunched: Bool, acknowledgement: @escaping () -> Void) {
         UpdateLogStore.shared.append("show update installed (relaunched=\(relaunched))")
         setState(.idle)
         acknowledgement()
     }
 
-    func showUpdateInFocus() {
+    public func showUpdateInFocus() {
         // No-op; vmux never shows Sparkle dialogs.
     }
 
-    func dismissUpdateInstallation() {
+    public func dismissUpdateInstallation() {
         UpdateLogStore.shared.append("dismiss update installation")
         if case .error = viewModel.state {
             UpdateLogStore.shared.append("dismiss update installation ignored (error visible)")
@@ -241,11 +248,11 @@ class UpdateDriver: NSObject, SPUUserDriver {
         UpdateLogStore.shared.append("state -> \(describe(newState))")
     }
 
-    func resolvedFeedURLString() -> String? {
+    public func resolvedFeedURLString() -> String? {
         lastFeedURLString
     }
 
-    func recordFeedURLString(_ feedURLString: String, usedFallback: Bool) {
+    public func recordFeedURLString(_ feedURLString: String, usedFallback: Bool) {
         if lastFeedURLString == feedURLString {
             return
         }
@@ -254,7 +261,7 @@ class UpdateDriver: NSObject, SPUUserDriver {
         UpdateLogStore.shared.append("feed url resolved\(suffix): \(feedURLString)")
     }
 
-    func formatErrorForLog(_ error: Error) -> String {
+    public func formatErrorForLog(_ error: Error) -> String {
         let nsError = error as NSError
         var parts: [String] = ["\(nsError.domain)(\(nsError.code))"]
         if !nsError.localizedDescription.isEmpty {

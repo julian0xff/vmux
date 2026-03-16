@@ -3,18 +3,23 @@ import AppKit
 import SwiftUI
 import Sparkle
 
-class UpdateViewModel: ObservableObject {
-    @Published var state: UpdateState = .idle
-    @Published var overrideState: UpdateState?
+public class UpdateViewModel: ObservableObject {
+    @Published public var state: UpdateState = .idle
+    @Published public var overrideState: UpdateState?
     #if DEBUG
-    @Published var debugOverrideText: String?
+    @Published public var debugOverrideText: String?
     #endif
 
-    var effectiveState: UpdateState {
+    /// Configurable accent color provider. Set from the app to supply the project accent color.
+    public static var accentColorProvider: () -> Color = { .accentColor }
+
+    public init() {}
+
+    public var effectiveState: UpdateState {
         overrideState ?? state
     }
 
-    var text: String {
+    public var text: String {
         #if DEBUG
         if let debugOverrideText { return debugOverrideText }
         #endif
@@ -50,7 +55,7 @@ class UpdateViewModel: ObservableObject {
         }
     }
 
-    var maxWidthText: String {
+    public var maxWidthText: String {
         switch effectiveState {
         case .downloading:
             return "Downloading: 100%"
@@ -61,7 +66,7 @@ class UpdateViewModel: ObservableObject {
         }
     }
 
-    var iconName: String? {
+    public var iconName: String? {
         switch effectiveState {
         case .idle:
             return nil
@@ -84,7 +89,7 @@ class UpdateViewModel: ObservableObject {
         }
     }
 
-    var description: String {
+    public var description: String {
         switch effectiveState {
         case .idle:
             return ""
@@ -107,7 +112,7 @@ class UpdateViewModel: ObservableObject {
         }
     }
 
-    var badge: String? {
+    public var badge: String? {
         switch effectiveState {
         case .updateAvailable(let update):
             let version = update.appcastItem.displayVersionString
@@ -125,7 +130,7 @@ class UpdateViewModel: ObservableObject {
         }
     }
 
-    var iconColor: Color {
+    public var iconColor: Color {
         switch effectiveState {
         case .idle:
             return .secondary
@@ -134,7 +139,7 @@ class UpdateViewModel: ObservableObject {
         case .checking:
             return .secondary
         case .updateAvailable:
-            return vmuxAccentColor()
+            return Self.accentColorProvider()
         case .downloading, .extracting, .installing:
             return .secondary
         case .notFound:
@@ -144,12 +149,12 @@ class UpdateViewModel: ObservableObject {
         }
     }
 
-    var backgroundColor: Color {
+    public var backgroundColor: Color {
         switch effectiveState {
         case .permissionRequest:
             return Color(nsColor: NSColor.systemBlue.blended(withFraction: 0.3, of: .black) ?? .systemBlue)
         case .updateAvailable:
-            return vmuxAccentColor()
+            return Self.accentColorProvider()
         case .notFound:
             return Color(nsColor: NSColor.systemBlue.blended(withFraction: 0.5, of: .black) ?? .systemBlue)
         case .error:
@@ -159,7 +164,7 @@ class UpdateViewModel: ObservableObject {
         }
     }
 
-    var foregroundColor: Color {
+    public var foregroundColor: Color {
         switch effectiveState {
         case .permissionRequest:
             return .white
@@ -174,7 +179,7 @@ class UpdateViewModel: ObservableObject {
         }
     }
 
-    static func userFacingErrorTitle(for error: Swift.Error) -> String {
+    public static func userFacingErrorTitle(for error: Swift.Error) -> String {
         let nsError = error as NSError
         if let networkError = networkError(from: nsError) {
             switch networkError.code {
@@ -221,18 +226,18 @@ class UpdateViewModel: ObservableObject {
         return String(localized: "update.error.failed.title", defaultValue: "Update Failed")
     }
 
-    static func userFacingErrorMessage(for error: Swift.Error) -> String {
+    public static func userFacingErrorMessage(for error: Swift.Error) -> String {
         let nsError = error as NSError
         if let networkError = networkError(from: nsError) {
             switch networkError.code {
             case NSURLErrorNotConnectedToInternet:
-                return String(localized: "update.error.noInternet.message", defaultValue: "vmux can’t reach the update server. Check your internet connection and try again.")
+                return String(localized: "update.error.noInternet.message", defaultValue: "vmux can't reach the update server. Check your internet connection and try again.")
             case NSURLErrorTimedOut:
                 return String(localized: "update.error.timedOut.message", defaultValue: "The update server took too long to respond. Try again in a moment.")
             case NSURLErrorCannotFindHost:
-                return String(localized: "update.error.serverNotFound.message", defaultValue: "The update server can’t be found. Check your connection or try again later.")
+                return String(localized: "update.error.serverNotFound.message", defaultValue: "The update server can't be found. Check your connection or try again later.")
             case NSURLErrorCannotConnectToHost:
-                return String(localized: "update.error.serverUnreachable.message", defaultValue: "vmux couldn’t connect to the update server. Check your connection or try again later.")
+                return String(localized: "update.error.serverUnreachable.message", defaultValue: "vmux couldn't connect to the update server. Check your connection or try again later.")
             case NSURLErrorNetworkConnectionLost:
                 return String(localized: "update.error.connectionLost.message", defaultValue: "The network connection was lost while checking for updates. Try again.")
             case NSURLErrorSecureConnectionFailed,
@@ -240,7 +245,7 @@ class UpdateViewModel: ObservableObject {
                  NSURLErrorServerCertificateHasBadDate,
                  NSURLErrorServerCertificateHasUnknownRoot,
                  NSURLErrorServerCertificateNotYetValid:
-                return String(localized: "update.error.secureConnectionFailed.message", defaultValue: "A secure connection to the update server couldn’t be established. Try again later.")
+                return String(localized: "update.error.secureConnectionFailed.message", defaultValue: "A secure connection to the update server couldn't be established. Try again later.")
             default:
                 break
             }
@@ -266,7 +271,7 @@ class UpdateViewModel: ObservableObject {
         return nsError.localizedDescription
     }
 
-    static func errorDetails(for error: Swift.Error, technicalDetails: String?, feedURLString: String?) -> String {
+    public static func errorDetails(for error: Swift.Error, technicalDetails: String?, feedURLString: String?) -> String {
         let nsError = error as NSError
         var lines: [String] = []
         lines.append("Message: \(nsError.localizedDescription)")
@@ -336,7 +341,7 @@ class UpdateViewModel: ObservableObject {
     }
 }
 
-enum UpdateState: Equatable {
+public enum UpdateState: Equatable {
     case idle
     case permissionRequest(PermissionRequest)
     case checking(Checking)
@@ -347,12 +352,12 @@ enum UpdateState: Equatable {
     case extracting(Extracting)
     case installing(Installing)
 
-    var isIdle: Bool {
+    public var isIdle: Bool {
         if case .idle = self { return true }
         return false
     }
 
-    var isInstallable: Bool {
+    public var isInstallable: Bool {
         switch self {
         case .checking,
                 .updateAvailable,
@@ -365,7 +370,7 @@ enum UpdateState: Equatable {
         }
     }
 
-    func cancel() {
+    public func cancel() {
         switch self {
         case .checking(let checking):
             checking.cancel()
@@ -382,7 +387,7 @@ enum UpdateState: Equatable {
         }
     }
 
-    func confirm() {
+    public func confirm() {
         switch self {
         case .updateAvailable(let available):
             available.reply(.install)
@@ -391,7 +396,7 @@ enum UpdateState: Equatable {
         }
     }
 
-    static func == (lhs: UpdateState, rhs: UpdateState) -> Bool {
+    public static func == (lhs: UpdateState, rhs: UpdateState) -> Bool {
         switch (lhs, rhs) {
         case (.idle, .idle):
             return true
@@ -416,33 +421,48 @@ enum UpdateState: Equatable {
         }
     }
 
-    struct NotFound {
-        let acknowledgement: () -> Void
+    public struct NotFound {
+        public let acknowledgement: () -> Void
+        public init(acknowledgement: @escaping () -> Void) {
+            self.acknowledgement = acknowledgement
+        }
     }
 
-    struct PermissionRequest {
-        let request: SPUUpdatePermissionRequest
-        let reply: @Sendable (SUUpdatePermissionResponse) -> Void
+    public struct PermissionRequest {
+        public let request: SPUUpdatePermissionRequest
+        public let reply: @Sendable (SUUpdatePermissionResponse) -> Void
+        public init(request: SPUUpdatePermissionRequest, reply: @escaping @Sendable (SUUpdatePermissionResponse) -> Void) {
+            self.request = request
+            self.reply = reply
+        }
     }
 
-    struct Checking {
-        let cancel: () -> Void
+    public struct Checking {
+        public let cancel: () -> Void
+        public init(cancel: @escaping () -> Void) {
+            self.cancel = cancel
+        }
     }
 
-    struct UpdateAvailable {
-        let appcastItem: SUAppcastItem
-        let reply: @Sendable (SPUUserUpdateChoice) -> Void
+    public struct UpdateAvailable {
+        public let appcastItem: SUAppcastItem
+        public let reply: @Sendable (SPUUserUpdateChoice) -> Void
 
-        var releaseNotes: ReleaseNotes? {
+        public init(appcastItem: SUAppcastItem, reply: @escaping @Sendable (SPUUserUpdateChoice) -> Void) {
+            self.appcastItem = appcastItem
+            self.reply = reply
+        }
+
+        public var releaseNotes: ReleaseNotes? {
             ReleaseNotes(displayVersionString: appcastItem.displayVersionString)
         }
     }
 
-    enum ReleaseNotes {
+    public enum ReleaseNotes {
         case commit(URL)
         case tagged(URL)
 
-        init?(displayVersionString: String) {
+        public init?(displayVersionString: String) {
             let version = displayVersionString
 
             if let semver = Self.extractSemanticVersion(from: version) {
@@ -480,14 +500,14 @@ enum UpdateState: Equatable {
             return nil
         }
 
-        var url: URL {
+        public var url: URL {
             switch self {
             case .commit(let url): return url
             case .tagged(let url): return url
             }
         }
 
-        var label: String {
+        public var label: String {
             switch self {
             case .commit: return String(localized: "update.viewGitHubCommit", defaultValue: "View GitHub Commit")
             case .tagged: return String(localized: "update.viewReleaseNotes", defaultValue: "View Release Notes")
@@ -495,14 +515,14 @@ enum UpdateState: Equatable {
         }
     }
 
-    struct Error {
-        let error: any Swift.Error
-        let retry: () -> Void
-        let dismiss: () -> Void
-        let technicalDetails: String?
-        let feedURLString: String?
+    public struct Error {
+        public let error: any Swift.Error
+        public let retry: () -> Void
+        public let dismiss: () -> Void
+        public let technicalDetails: String?
+        public let feedURLString: String?
 
-        init(error: any Swift.Error,
+        public init(error: any Swift.Error,
              retry: @escaping () -> Void,
              dismiss: @escaping () -> Void,
              technicalDetails: String? = nil,
@@ -515,19 +535,34 @@ enum UpdateState: Equatable {
         }
     }
 
-    struct Downloading {
-        let cancel: () -> Void
-        let expectedLength: UInt64?
-        let progress: UInt64
+    public struct Downloading {
+        public let cancel: () -> Void
+        public let expectedLength: UInt64?
+        public let progress: UInt64
+
+        public init(cancel: @escaping () -> Void, expectedLength: UInt64?, progress: UInt64) {
+            self.cancel = cancel
+            self.expectedLength = expectedLength
+            self.progress = progress
+        }
     }
 
-    struct Extracting {
-        let progress: Double
+    public struct Extracting {
+        public let progress: Double
+        public init(progress: Double) {
+            self.progress = progress
+        }
     }
 
-    struct Installing {
-        var isAutoUpdate = false
-        let retryTerminatingApplication: () -> Void
-        let dismiss: () -> Void
+    public struct Installing {
+        public var isAutoUpdate = false
+        public let retryTerminatingApplication: () -> Void
+        public let dismiss: () -> Void
+
+        public init(isAutoUpdate: Bool = false, retryTerminatingApplication: @escaping () -> Void, dismiss: @escaping () -> Void) {
+            self.isAutoUpdate = isAutoUpdate
+            self.retryTerminatingApplication = retryTerminatingApplication
+            self.dismiss = dismiss
+        }
     }
 }

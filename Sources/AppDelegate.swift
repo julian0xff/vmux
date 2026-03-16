@@ -4,6 +4,7 @@ import Bonsplit
 import VmuxCore
 import VmuxSession
 import VmuxSocket
+import VmuxUpdate
 import CoreServices
 import UserNotifications
 import WebKit
@@ -2129,6 +2130,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Wire VmuxUpdate closures to app-level services.
+        updateController.userDriver.onRetryUpdateCheck = { [weak self] in
+            self?.checkForUpdates(nil)
+        }
+        updateController.userDriver.onWillRelaunchApplication = { [weak self] in
+            self?.persistSessionForUpdateRelaunch()
+            TerminalController.shared.stop()
+            NSApp.invalidateRestorableState()
+            for window in NSApp.windows {
+                window.invalidateRestorableState()
+            }
+        }
+        // Set the accent color provider for VmuxUpdate.
+        UpdateViewModel.accentColorProvider = { vmuxAccentColor() }
+
         let env = ProcessInfo.processInfo.environment
         let isRunningUnderXCTest = isRunningUnderXCTest(env)
 

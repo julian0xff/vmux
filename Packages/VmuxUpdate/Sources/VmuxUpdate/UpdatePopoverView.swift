@@ -3,11 +3,15 @@ import SwiftUI
 import Sparkle
 
 /// Popover view that displays detailed update information and actions.
-struct UpdatePopoverView: View {
+public struct UpdatePopoverView: View {
     @ObservedObject var model: UpdateViewModel
     @Environment(\.dismiss) private var dismiss
 
-    var body: some View {
+    public init(model: UpdateViewModel) {
+        self.model = model
+    }
+
+    public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             switch model.effectiveState {
             case .idle:

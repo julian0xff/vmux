@@ -7,6 +7,7 @@ import UniformTypeIdentifiers
 import WebKit
 import VmuxCore
 import VmuxSession
+import VmuxUpdate
 private extension Color {
     init?(hex: String) {
         let hex = hex.trimmingCharacters(in: .init(charactersIn: "#"))

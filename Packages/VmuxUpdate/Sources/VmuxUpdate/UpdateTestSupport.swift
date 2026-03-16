@@ -2,8 +2,8 @@
 import Foundation
 import Sparkle
 
-enum UpdateTestSupport {
-    static func applyIfNeeded(to viewModel: UpdateViewModel) {
+public enum UpdateTestSupport {
+    public static func applyIfNeeded(to viewModel: UpdateViewModel) {
         let env = ProcessInfo.processInfo.environment
         guard env["VMUX_UI_TEST_MODE"] == "1" else { return }
         guard let state = env["VMUX_UI_TEST_UPDATE_STATE"] else { return }
@@ -24,7 +24,7 @@ enum UpdateTestSupport {
         }
     }
 
-    static func performMockFeedCheckIfNeeded(on viewModel: UpdateViewModel) -> Bool {
+    public static func performMockFeedCheckIfNeeded(on viewModel: UpdateViewModel) -> Bool {
         let env = ProcessInfo.processInfo.environment
         guard env["VMUX_UI_TEST_TRIGGER_UPDATE_CHECK"] == "1" else { return false }
         guard let feedURLString = env["VMUX_UI_TEST_FEED_URL"],

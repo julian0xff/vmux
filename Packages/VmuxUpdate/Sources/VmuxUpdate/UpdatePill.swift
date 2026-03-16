@@ -1,16 +1,20 @@
 import AppKit
-import Bonsplit
 import Foundation
 import SwiftUI
 import VmuxCore
+
 /// A pill-shaped button that displays update status and provides access to update actions.
-struct UpdatePill: View {
+public struct UpdatePill: View {
     @ObservedObject var model: UpdateViewModel
     @State private var showPopover = false
 
     private let textFont = NSFont.systemFont(ofSize: 11, weight: .medium)
 
-    var body: some View {
+    public init(model: UpdateViewModel) {
+        self.model = model
+    }
+
+    public var body: some View {
         let state = model.effectiveState
         if !state.isIdle {
             pillButton
@@ -68,10 +72,14 @@ struct UpdatePill: View {
 }
 
 /// Menu item that shows "Install Update and Relaunch" when an update is ready.
-struct InstallUpdateMenuItem: View {
+public struct InstallUpdateMenuItem: View {
     @ObservedObject var model: UpdateViewModel
 
-    var body: some View {
+    public init(model: UpdateViewModel) {
+        self.model = model
+    }
+
+    public var body: some View {
         if model.state.isInstallable {
             Button(String(localized: "update.installAndRelaunch", defaultValue: "Install Update and Relaunch")) {
                 model.state.confirm()
