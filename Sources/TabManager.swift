@@ -3,6 +3,7 @@ import SwiftUI
 import Foundation
 import Bonsplit
 import VmuxCore
+import VmuxSession
 import CoreVideo
 import Combine
 

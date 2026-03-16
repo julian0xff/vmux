@@ -5,6 +5,7 @@ import Bonsplit
 import Combine
 import CoreText
 import VmuxCore
+import VmuxSession
 func vmuxSurfaceContextName(_ context: ghostty_surface_context_e) -> String {
     switch context {
     case GHOSTTY_SURFACE_CONTEXT_WINDOW:

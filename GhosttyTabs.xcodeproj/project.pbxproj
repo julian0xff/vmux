@@ -23,7 +23,7 @@
 		A5001007 /* TerminalController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001019 /* TerminalController.swift */; };
 		A5001500 /* VmuxWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001510 /* VmuxWebView.swift */; };
 		A5001501 /* UITestRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001511 /* UITestRecorder.swift */; };
-		A5001226 /* SocketControlSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001225 /* SocketControlSettings.swift */; };
+		/* A5001226 SocketControlSettings.swift moved to VmuxSocket package */
 		A5009001 /* WorkspaceTemplateSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5009000 /* WorkspaceTemplateSettings.swift */; };
 		A5009003 /* TemplateCreationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5009002 /* TemplateCreationView.swift */; };
 		A5001621 /* AppleScriptSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001620 /* AppleScriptSupport.swift */; };
@@ -62,7 +62,7 @@
 		A5001208 /* UpdateTitlebarAccessory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001218 /* UpdateTitlebarAccessory.swift */; };
 		A5001209 /* WindowToolbarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001219 /* WindowToolbarController.swift */; };
 		A5001240 /* WindowDecorationsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001241 /* WindowDecorationsController.swift */; };
-		A5001610 /* SessionPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001611 /* SessionPersistence.swift */; };
+		/* A5001610 SessionPersistence.swift moved to VmuxSession package */
 		A5001100 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A5001101 /* Assets.xcassets */; };
 		A5001230 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = A5001231 /* Sparkle */; };
 		B9000002A1B2C3D4E5F60719 /* vmux.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000001A1B2C3D4E5F60719 /* vmux.swift */; };
@@ -172,7 +172,7 @@
 		A5001620 /* AppleScriptSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleScriptSupport.swift; sourceTree = "<group>"; };
 			A5001510 /* VmuxWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panels/VmuxWebView.swift; sourceTree = "<group>"; };
 			A5001511 /* UITestRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UITestRecorder.swift; sourceTree = "<group>"; };
-			A5001225 /* SocketControlSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocketControlSettings.swift; sourceTree = "<group>"; };
+			/* A5001225 SocketControlSettings.swift moved to VmuxSocket package */
 			A5009000 /* WorkspaceTemplateSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceTemplateSettings.swift; sourceTree = "<group>"; };
 			A5009002 /* TemplateCreationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateCreationView.swift; sourceTree = "<group>"; };
 		A5001410 /* Panel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panels/Panel.swift; sourceTree = "<group>"; };
@@ -209,7 +209,7 @@
 		A5001222 /* WindowAccessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowAccessor.swift; sourceTree = "<group>"; };
 		A5001223 /* UpdateLogStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Update/UpdateLogStore.swift; sourceTree = "<group>"; };
 		A5001241 /* WindowDecorationsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowDecorationsController.swift; sourceTree = "<group>"; };
-		A5001611 /* SessionPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionPersistence.swift; sourceTree = "<group>"; };
+		/* A5001611 SessionPersistence.swift moved to VmuxSession package */
 		818DBCD4AB69EB72573E8138 /* SidebarResizeUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarResizeUITests.swift; sourceTree = "<group>"; };
 		B8F266256A1A3D9A45BD840F /* SidebarHelpMenuUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarHelpMenuUITests.swift; sourceTree = "<group>"; };
 		C0B4D9B1A1B2C3D4E5F60718 /* UpdatePillUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdatePillUITests.swift; sourceTree = "<group>"; };
@@ -369,7 +369,7 @@
 				A5001533 /* BrowserWindowPortal.swift */,
 				A5001019 /* TerminalController.swift */,
 				A5001541 /* PortScanner.swift */,
-				A5001225 /* SocketControlSettings.swift */,
+				/* SocketControlSettings.swift moved to VmuxSocket package */
 				A5009000 /* WorkspaceTemplateSettings.swift */,
 				A5009002 /* TemplateCreationView.swift */,
 				A5001620 /* AppleScriptSupport.swift */,
@@ -403,7 +403,7 @@
 				A5001219 /* WindowToolbarController.swift */,
 				A5001241 /* WindowDecorationsController.swift */,
 				A5001222 /* WindowAccessor.swift */,
-				A5001611 /* SessionPersistence.swift */,
+				/* SessionPersistence.swift moved to VmuxSession package */
 			);
 			path = Sources;
 			sourceTree = "<group>";
@@ -501,6 +501,8 @@
 					A5001261 /* Bonsplit */,
 					A5001291 /* MarkdownUI */,
 					VC000002 /* VmuxCore */,
+					VS000002 /* VmuxSession */,
+					VK000002 /* VmuxSocket */,
 				);
 			name = GhosttyTabs;
 			productName = GhosttyTabs;
@@ -602,6 +604,8 @@
 					A5001292 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
 					A5001260 /* XCLocalSwiftPackageReference "bonsplit" */,
 					VC000001 /* XCLocalSwiftPackageReference "VmuxCore" */,
+					VS000001 /* XCLocalSwiftPackageReference "VmuxSession" */,
+					VK000001 /* XCLocalSwiftPackageReference "VmuxSocket" */,
 				);
 			productRefGroup = A5001042 /* Products */;
 			projectDirPath = "";
@@ -639,7 +643,7 @@
 				A5001534 /* BrowserWindowPortal.swift in Sources */,
 				A5001007 /* TerminalController.swift in Sources */,
 				A5001540 /* PortScanner.swift in Sources */,
-				A5001226 /* SocketControlSettings.swift in Sources */,
+				/* SocketControlSettings.swift moved to VmuxSocket package */
 				A5009001 /* WorkspaceTemplateSettings.swift in Sources */,
 				A5009003 /* TemplateCreationView.swift in Sources */,
 				A5001621 /* AppleScriptSupport.swift in Sources */,
@@ -673,7 +677,7 @@
 				A5001209 /* WindowToolbarController.swift in Sources */,
 				A5001240 /* WindowDecorationsController.swift in Sources */,
 				A500120C /* WindowAccessor.swift in Sources */,
-				A5001610 /* SessionPersistence.swift in Sources */,
+				/* SessionPersistence.swift moved to VmuxSession package */
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1021,6 +1025,14 @@
 				isa = XCLocalSwiftPackageReference;
 				relativePath = Packages/VmuxCore;
 			};
+			VS000001 /* XCLocalSwiftPackageReference "VmuxSession" */ = {
+				isa = XCLocalSwiftPackageReference;
+				relativePath = Packages/VmuxSession;
+			};
+			VK000001 /* XCLocalSwiftPackageReference "VmuxSocket" */ = {
+				isa = XCLocalSwiftPackageReference;
+				relativePath = Packages/VmuxSocket;
+			};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -1043,6 +1055,16 @@
 				isa = XCSwiftPackageProductDependency;
 				package = VC000001 /* XCLocalSwiftPackageReference "VmuxCore" */;
 				productName = VmuxCore;
+			};
+			VS000002 /* VmuxSession */ = {
+				isa = XCSwiftPackageProductDependency;
+				package = VS000001 /* XCLocalSwiftPackageReference "VmuxSession" */;
+				productName = VmuxSession;
+			};
+			VK000002 /* VmuxSocket */ = {
+				isa = XCSwiftPackageProductDependency;
+				package = VK000001 /* XCLocalSwiftPackageReference "VmuxSocket" */;
+				productName = VmuxSocket;
 			};
 /* End XCSwiftPackageProductDependency section */
 

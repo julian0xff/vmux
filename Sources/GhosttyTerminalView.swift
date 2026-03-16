@@ -9,6 +9,8 @@ import Bonsplit
 import IOSurface
 import UniformTypeIdentifiers
 import VmuxCore
+import VmuxSession
+import VmuxSocket
 #if os(macOS)
 func vmuxShouldUseTransparentBackgroundWindow() -> Bool {
     let defaults = UserDefaults.standard

@@ -2,6 +2,8 @@ import AppKit
 import SwiftUI
 import Bonsplit
 import VmuxCore
+import VmuxSession
+import VmuxSocket
 import CoreServices
 import UserNotifications
 import WebKit

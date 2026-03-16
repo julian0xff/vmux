@@ -1,4 +1,5 @@
 import XCTest
+import VmuxSession
 
 #if canImport(vmux_DEV)
 @testable import vmux_DEV
