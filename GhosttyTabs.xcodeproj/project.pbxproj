@@ -162,6 +162,8 @@
 /* End PBXContainerItemProxy section */
 
 		/* Begin PBXFileReference section */
+		SK000011 /* TabManager+SocketProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TabManager+SocketProtocol.swift"; sourceTree = "<group>"; };
+		SK000012 /* Workspace+SocketProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Workspace+SocketProtocol.swift"; sourceTree = "<group>"; };
 		SV000011 /* TypingPerformance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TypingPerformance.swift; sourceTree = "<group>"; };
 		SV000012 /* VSCodeIntegration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VSCodeIntegration.swift; sourceTree = "<group>"; };
 		SV000013 /* CLIInstallService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CLIInstallService.swift; sourceTree = "<group>"; };
@@ -386,8 +388,10 @@
 					/* KeyboardShortcutSettings.swift moved to VmuxCore */
 					A50012F4 /* KeyboardLayout.swift */,
 					A5001013 /* TabManager.swift */,
+					SK000011 /* TabManager+SocketProtocol.swift */,
 					A5001511 /* UITestRecorder.swift */,
 					A5001416 /* Workspace.swift */,
+					SK000012 /* Workspace+SocketProtocol.swift */,
 				A5001417 /* WorkspaceContentView.swift */,
 				/* GhosttyConfig.swift moved to VmuxCore */
 				A5001015 /* GhosttyTerminalView.swift */,
@@ -680,8 +684,10 @@
 					/* KeyboardShortcutSettings.swift moved to VmuxCore package */
 					A50012F5 /* KeyboardLayout.swift in Sources */,
 						A5001003 /* TabManager.swift in Sources */,
+						SK000001 /* TabManager+SocketProtocol.swift in Sources */,
 						A5001501 /* UITestRecorder.swift in Sources */,
 						A5001406 /* Workspace.swift in Sources */,
+						SK000002 /* Workspace+SocketProtocol.swift in Sources */,
 				A5001407 /* WorkspaceContentView.swift in Sources */,
 				/* GhosttyConfig.swift moved to VmuxCore package */
 				A5001005 /* GhosttyTerminalView.swift in Sources */,
