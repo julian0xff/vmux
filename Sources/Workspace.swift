@@ -1033,7 +1033,7 @@ final class Workspace: Identifiable, ObservableObject {
         case .commandRunning:
             return true
         case .unknown:
-            return fallbackNeedsConfirmClose
+            return false
         }
     }
 
@@ -1646,10 +1646,21 @@ final class Workspace: Identifiable, ObservableObject {
         return !trimmed.isEmpty
     }
 
+    /// Extract just the last folder name from a path-like string.
+    static func lastPathComponent(of text: String) -> String {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.contains("/") else { return trimmed }
+        let expanded = trimmed.hasPrefix("~")
+            ? (trimmed as NSString).expandingTildeInPath
+            : trimmed
+        let last = (expanded as NSString).lastPathComponent
+        return last.isEmpty ? trimmed : last
+    }
+
     func applyProcessTitle(_ title: String) {
         processTitle = title
         guard customTitle == nil else { return }
-        self.title = title
+        self.title = Self.lastPathComponent(of: title)
     }
 
     func setCustomColor(_ hex: String?) {
@@ -1664,7 +1675,7 @@ final class Workspace: Identifiable, ObservableObject {
         let trimmed = title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if trimmed.isEmpty {
             customTitle = nil
-            self.title = processTitle
+            self.title = Self.lastPathComponent(of: processTitle)
         } else {
             customTitle = trimmed
             self.title = trimmed
@@ -1825,8 +1836,9 @@ final class Workspace: Identifiable, ObservableObject {
 
         // If this is the only panel and no custom title, update workspace title
         if panels.count == 1, customTitle == nil {
-            if self.title != trimmed {
-                self.title = trimmed
+            let shortTitle = Self.lastPathComponent(of: trimmed)
+            if self.title != shortTitle {
+                self.title = shortTitle
                 didMutate = true
             }
             if processTitle != trimmed {

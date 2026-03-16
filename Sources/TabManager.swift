@@ -1834,7 +1834,30 @@ class TabManager: ObservableObject {
             NSApp.activate(ignoringOtherApps: true)
         }
 
-        return alert.runModal() == .alertFirstButtonReturn
+        let result = alert.runModal() == .alertFirstButtonReturn
+
+        // After modal dismisses, SwiftUI hover tracking is stale.
+        // Post a synthetic mouse-moved event through the full event pipeline to kick it back.
+        DispatchQueue.main.async {
+            let mouseLocation = NSEvent.mouseLocation
+            guard let window = self.window ?? NSApp.keyWindow else { return }
+            let pointInWindow = window.convertPoint(fromScreen: mouseLocation)
+            if let event = NSEvent.mouseEvent(
+                with: .mouseMoved,
+                location: pointInWindow,
+                modifierFlags: [],
+                timestamp: ProcessInfo.processInfo.systemUptime,
+                windowNumber: window.windowNumber,
+                context: nil,
+                eventNumber: 0,
+                clickCount: 0,
+                pressure: 0
+            ) {
+                NSApp.postEvent(event, atStart: false)
+            }
+        }
+
+        return result
     }
 
     private struct CloseOtherTabsInFocusedPanePlan {

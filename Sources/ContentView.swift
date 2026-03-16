@@ -7884,6 +7884,7 @@ struct VerticalTabsSidebar: View {
                                         dropIndicator: $dropIndicator,
                                         selectedTabIds: $selectedTabIds
                                     )
+                                    .padding(.leading, CGFloat(item.depth) * 16)
                                     .overlay(alignment: .leading) {
                                         SidebarIndentGuides(depth: item.depth)
                                     }
@@ -10149,6 +10150,16 @@ enum SidebarWorkspaceShortcutHintMetrics {
 // main thread during typing). If you add new properties, update == below.
 // Do NOT add @EnvironmentObject or new @Binding without updating ==.
 // Do NOT remove .equatable() from the ForEach call site in VerticalTabsSidebar.
+private enum SidebarRowMetrics {
+    static let outerHorizontalInset: CGFloat = 6
+    static let innerHorizontalInset: CGFloat = 10
+    static let verticalInset: CGFloat = 8
+    static let leadingAccessoryWidth: CGFloat = 12
+    static let leadingAccessoryOffset: CGFloat = -5
+    static let iconWidth: CGFloat = 24
+    static let contentSpacing: CGFloat = 10
+}
+
 private struct TabItemView: View, Equatable {
     // Closures, Bindings, and object references are excluded from ==
     // because they're recreated every parent eval but don't affect rendering.
@@ -10375,12 +10386,13 @@ private struct TabItemView: View, Equatable {
             return pullRequestDisplays(orderedPanelIds: orderedPanelIds)
         }()
 
-        HStack(alignment: .center, spacing: 6) {
+        HStack(alignment: .center, spacing: SidebarRowMetrics.contentSpacing) {
             Image(systemName: "rectangle.split.2x1.fill")
-                .font(.system(size: 18))
+                .font(.system(size: SidebarRowMetrics.iconWidth))
+                .frame(width: SidebarRowMetrics.iconWidth, alignment: .center)
                 .foregroundColor(activeSecondaryColor(0.5))
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
                 if unreadCount > 0 {
                     ZStack {
                         Circle()
@@ -10414,12 +10426,12 @@ private struct TabItemView: View, Equatable {
                         tabManager.closeWorkspaceWithConfirmation(tab)
                     }) {
                         Image(systemName: "xmark")
-                            .font(.system(size: 9, weight: .medium))
+                            .font(.system(size: 11, weight: .medium))
                             .foregroundColor(activeSecondaryColor(0.7))
                     }
                     .buttonStyle(.plain)
                     .safeHelp(KeyboardShortcutSettings.Action.closeWorkspace.tooltip(closeWorkspaceTooltip))
-                    .frame(width: 16, height: 16, alignment: .center)
+                    .frame(width: 22, height: 22, alignment: .center)
                     .opacity(showCloseButton && !showsWorkspaceShortcutHint ? 1 : 0)
                     .allowsHitTesting(showCloseButton && !showsWorkspaceShortcutHint)
 
@@ -10604,13 +10616,14 @@ private struct TabItemView: View, Equatable {
                     .lineLimit(1)
                     .truncationMode(.tail)
             }
+            }
         }
-        } // end workspace icon HStack
         .animation(.easeInOut(duration: 0.2), value: tab.logEntries.count)
         .animation(.easeInOut(duration: 0.2), value: tab.progress != nil)
         .animation(.easeInOut(duration: 0.2), value: tab.metadataBlocks.count)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
+        .padding(.leading, SidebarRowMetrics.innerHorizontalInset + SidebarRowMetrics.leadingAccessoryWidth)
+        .padding(.trailing, SidebarRowMetrics.innerHorizontalInset)
+        .padding(.vertical, SidebarRowMetrics.verticalInset)
         .background(
             RoundedRectangle(cornerRadius: 6)
                 .fill(backgroundColor)
@@ -10629,7 +10642,7 @@ private struct TabItemView: View, Equatable {
                     }
                 }
         )
-        .padding(.horizontal, 6)
+        .padding(.horizontal, SidebarRowMetrics.outerHorizontalInset)
         .background {
             GeometryReader { proxy in
                 Color.clear
@@ -10686,6 +10699,10 @@ private struct TabItemView: View, Equatable {
         .onHover { hovering in
             isHovering = hovering
         }
+        .overlay(
+            HoverTrackingOverlay(isHovering: $isHovering)
+                .allowsHitTesting(false)
+        )
         .accessibilityElement(children: .combine)
         .accessibilityLabel(Text(accessibilityTitle))
         .accessibilityHint(Text(accessibilityHintText))
@@ -11772,17 +11789,10 @@ private struct SidebarFolderHeaderView: View {
     }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 6) {
-            Image(systemName: folder.isCollapsed ? "chevron.right" : "chevron.down")
-                .font(.system(size: 9, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .frame(width: 12)
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    folderStore.toggleCollapse(folderId: folder.id)
-                }
+        HStack(alignment: .center, spacing: SidebarRowMetrics.contentSpacing) {
             Image(systemName: "folder.fill")
-                .font(.system(size: 20))
+                .font(.system(size: SidebarRowMetrics.iconWidth))
+                .frame(width: SidebarRowMetrics.iconWidth, alignment: .center)
                 .foregroundStyle(folderIconColor)
                 .contentShape(Rectangle())
                 .onTapGesture {
@@ -11814,6 +11824,7 @@ private struct SidebarFolderHeaderView: View {
                     .lineLimit(1)
                     .foregroundStyle(.tertiary)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
             .onTapGesture {
                 let modifiers = NSEvent.modifierFlags.intersection(.deviceIndependentFlagsMask)
@@ -11827,24 +11838,10 @@ private struct SidebarFolderHeaderView: View {
                     selectedTabIds = [folder.id]
                 }
             }
-            Spacer(minLength: 0)
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    let modifiers = NSEvent.modifierFlags.intersection(.deviceIndependentFlagsMask)
-                    if modifiers.contains(.command) {
-                        if selectedTabIds.contains(folder.id) {
-                            selectedTabIds.remove(folder.id)
-                        } else {
-                            selectedTabIds.insert(folder.id)
-                        }
-                    } else {
-                        selectedTabIds = [folder.id]
-                    }
-                }
         }
-        .padding(.leading, CGFloat(depth) * 16 + 10)
-        .padding(.trailing, 10)
-        .padding(.vertical, 8)
+        .padding(.leading, SidebarRowMetrics.innerHorizontalInset + SidebarRowMetrics.leadingAccessoryWidth)
+        .padding(.trailing, SidebarRowMetrics.innerHorizontalInset)
+        .padding(.vertical, SidebarRowMetrics.verticalInset)
         .background(
             RoundedRectangle(cornerRadius: 6)
                 .fill(isDropTarget ? cmuxAccentColor().opacity(0.2) : Color.clear)
@@ -11853,6 +11850,23 @@ private struct SidebarFolderHeaderView: View {
             RoundedRectangle(cornerRadius: 6)
                 .fill(isSelected ? cmuxAccentColor().opacity(0.25) : Color.clear)
         )
+        .overlay(alignment: .leading) {
+            Image(systemName: folder.isCollapsed ? "chevron.right" : "chevron.down")
+                .font(.system(size: 8, weight: .bold))
+                .foregroundStyle(.secondary)
+                .frame(
+                    width: SidebarRowMetrics.leadingAccessoryWidth,
+                    height: SidebarRowMetrics.iconWidth,
+                    alignment: .center
+                )
+                .contentShape(Rectangle())
+                .padding(.leading, SidebarRowMetrics.innerHorizontalInset)
+                .offset(x: SidebarRowMetrics.leadingAccessoryOffset)
+                .onTapGesture {
+                    folderStore.toggleCollapse(folderId: folder.id)
+                }
+        }
+        .padding(.horizontal, SidebarRowMetrics.outerHorizontalInset)
         .onHover { hovering in
             isHovering = hovering
         }
@@ -12679,6 +12693,56 @@ private struct SidebarUnifiedDropDelegate: DropDelegate {
         guard let indicator else { return "nil" }
         let tabText = indicator.tabId.map { String($0.uuidString.prefix(5)) } ?? "end"
         return "\(tabText):\(indicator.edge == .top ? "top" : "bottom")"
+    }
+}
+
+/// Overlay that installs an NSTrackingArea on the hosting SwiftUI view's backing NSView.
+/// Re-evaluates mouse containment on layout changes (updateTrackingAreas), fixing the issue
+/// where closing a workspace via X doesn't show X on the workspace that slides up.
+private struct HoverTrackingOverlay: NSViewRepresentable {
+    @Binding var isHovering: Bool
+
+    func makeNSView(context: Context) -> HoverTrackingNSView {
+        let view = HoverTrackingNSView()
+        view.onHoverChanged = { [view] hovering in
+            // Only update if the view is still in the hierarchy
+            guard view.superview != nil else { return }
+            DispatchQueue.main.async { isHovering = hovering }
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: HoverTrackingNSView, context: Context) {
+        nsView.onHoverChanged = { hovering in
+            DispatchQueue.main.async { isHovering = hovering }
+        }
+        // Re-check on every SwiftUI update (e.g. after a sibling is removed)
+        nsView.recheckMouseContainment()
+    }
+}
+
+private final class HoverTrackingNSView: NSView {
+    var onHoverChanged: ((Bool) -> Void)?
+
+    override var isFlipped: Bool { true }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        recheckMouseContainment()
+    }
+
+    func recheckMouseContainment() {
+        guard let window else { return }
+        let mouseScreen = NSEvent.mouseLocation
+        let mouseInWindow = window.convertPoint(fromScreen: mouseScreen)
+        let mouseInSelf = convert(mouseInWindow, from: nil)
+        let inside = bounds.contains(mouseInSelf)
+        onHoverChanged?(inside)
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        recheckMouseContainment()
     }
 }
 
