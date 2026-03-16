@@ -6,13 +6,16 @@
 # so that Claude Code hooks fire back into vmux for notifications/status.
 # Outside vmux, it passes through to the real claude binary unchanged.
 
-# Find the real claude binary, skipping our own directory.
+# Find the real claude binary, skipping our own directory and any other
+# terminal app wrapper directories (e.g., cmux.app) to avoid wrapper loops.
 find_real_claude() {
     local self_dir
     self_dir="$(cd "$(dirname "$0")" && pwd)"
     local IFS=:
     for d in $PATH; do
         [[ "$d" == "$self_dir" ]] && continue
+        # Skip other terminal app wrapper directories that contain their own claude shim
+        [[ "$d" == *".app/Contents/Resources/bin" ]] && continue
         [[ -x "$d/claude" ]] && printf '%s' "$d/claude" && return 0
     done
     return 1
