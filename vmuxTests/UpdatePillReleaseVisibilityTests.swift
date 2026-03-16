@@ -1,6 +1,7 @@
 import XCTest
 import Foundation
 import AppKit
+import VmuxBrowser
 
 #if canImport(vmux_DEV)
 @testable import vmux_DEV

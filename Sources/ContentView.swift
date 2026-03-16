@@ -8,6 +8,8 @@ import WebKit
 import VmuxCore
 import VmuxSession
 import VmuxUpdate
+import VmuxBrowser
+import VmuxTerminal
 private extension Color {
     init?(hex: String) {
         let hex = hex.trimmingCharacters(in: .init(charactersIn: "#"))
@@ -1879,7 +1881,7 @@ struct ContentView: View {
     private var windowIdentifier: String { "vmux.main.\(windowId.uuidString)" }
     private var fakeTitlebarTextColor: Color {
         _ = titlebarThemeGeneration
-        let ghosttyBackground = GhosttyApp.shared.defaultBackgroundColor
+        let ghosttyBackground = TerminalEngine.shared?.defaultBackgroundColor ?? .windowBackgroundColor
         return ghosttyBackground.isLightColor
             ? Color.black.opacity(0.78)
             : Color.white.opacity(0.82)
@@ -1940,10 +1942,10 @@ struct ContentView: View {
             // The terminal area has two stacked semi-transparent layers: the Bonsplit
             // container chrome background plus Ghostty's own Metal-rendered background.
             // Compute the effective composited opacity so the titlebar matches visually.
-            let alpha = CGFloat(GhosttyApp.shared.defaultBackgroundOpacity)
+            let alpha = CGFloat(TerminalEngine.shared?.defaultBackgroundOpacity ?? 1.0)
             let effective = alpha >= 0.999 ? alpha : 1.0 - pow(1.0 - alpha, 2)
             return TitlebarLayerBackground(
-                backgroundColor: GhosttyApp.shared.defaultBackgroundColor,
+                backgroundColor: TerminalEngine.shared?.defaultBackgroundColor ?? .windowBackgroundColor,
                 opacity: effective
             )
         }())
@@ -1982,12 +1984,12 @@ struct ContentView: View {
     ) {
         let previousGeneration = titlebarThemeGeneration
         titlebarThemeGeneration &+= 1
-        if GhosttyApp.shared.backgroundLogEnabled {
+        if TerminalEngine.shared?.backgroundLogEnabled == true {
             let eventLabel = backgroundEventId.map(String.init) ?? "nil"
             let sourceLabel = backgroundSource ?? "nil"
             let payloadLabel = notificationPayloadHex ?? "nil"
-            GhosttyApp.shared.logBackground(
-                "titlebar theme refresh scheduled reason=\(reason) event=\(eventLabel) source=\(sourceLabel) payload=\(payloadLabel) previousGeneration=\(previousGeneration) generation=\(titlebarThemeGeneration) appBg=\(GhosttyApp.shared.defaultBackgroundColor.hexString()) appOpacity=\(String(format: "%.3f", GhosttyApp.shared.defaultBackgroundOpacity))"
+            TerminalEngine.shared?.logBackground(
+                "titlebar theme refresh scheduled reason=\(reason) event=\(eventLabel) source=\(sourceLabel) payload=\(payloadLabel) previousGeneration=\(previousGeneration) generation=\(titlebarThemeGeneration) appBg=\((TerminalEngine.shared?.defaultBackgroundColor ?? .windowBackgroundColor).hexString()) appOpacity=\(String(format: "%.3f", TerminalEngine.shared?.defaultBackgroundOpacity ?? 1.0))"
             )
         }
     }
@@ -2000,8 +2002,8 @@ struct ContentView: View {
         notificationPayloadHex: String?
     ) {
         guard tabManager.selectedTabId == workspaceId else {
-            guard GhosttyApp.shared.backgroundLogEnabled else { return }
-            GhosttyApp.shared.logBackground(
+            guard TerminalEngine.shared?.backgroundLogEnabled == true else { return }
+            TerminalEngine.shared?.logBackground(
                 "titlebar theme refresh skipped workspace=\(workspaceId.uuidString) selected=\(tabManager.selectedTabId?.uuidString ?? "nil") reason=\(reason)"
             )
             return
@@ -2218,9 +2220,9 @@ struct ContentView: View {
         })
 
         view = AnyView(view.onChange(of: titlebarThemeGeneration) { oldValue, newValue in
-            guard GhosttyApp.shared.backgroundLogEnabled else { return }
-            GhosttyApp.shared.logBackground(
-                "titlebar theme refresh applied oldGeneration=\(oldValue) generation=\(newValue) appBg=\(GhosttyApp.shared.defaultBackgroundColor.hexString()) appOpacity=\(String(format: "%.3f", GhosttyApp.shared.defaultBackgroundOpacity))"
+            guard TerminalEngine.shared?.backgroundLogEnabled == true else { return }
+            TerminalEngine.shared?.logBackground(
+                "titlebar theme refresh applied oldGeneration=\(oldValue) generation=\(newValue) appBg=\((TerminalEngine.shared?.defaultBackgroundColor ?? .windowBackgroundColor).hexString()) appOpacity=\(String(format: "%.3f", TerminalEngine.shared?.defaultBackgroundOpacity ?? 1.0))"
             )
         })
 
@@ -11730,8 +11732,8 @@ private struct SidebarBackdrop: View {
         return ZStack {
             if materialOption?.usesTerminalBackground == true {
                 let _ = terminalThemeGeneration
-                let bgColor = GhosttyApp.shared.defaultBackgroundColor
-                let alpha = CGFloat(GhosttyApp.shared.defaultBackgroundOpacity)
+                let bgColor = TerminalEngine.shared?.defaultBackgroundColor ?? .windowBackgroundColor
+                let alpha = CGFloat(TerminalEngine.shared?.defaultBackgroundOpacity ?? 1.0)
                 let effective = alpha >= 0.999 ? alpha : 1.0 - pow(1.0 - alpha, 2)
                 let sidebarColor = bgColor.darken(by: bgColor.isLightColor ? 0.08 : 0.04)
                 TitlebarLayerBackground(

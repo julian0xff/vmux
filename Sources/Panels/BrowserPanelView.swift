@@ -3,6 +3,7 @@ import SwiftUI
 import WebKit
 import AppKit
 import VmuxCore
+import VmuxBrowser
 enum BrowserDevToolsIconOption: String, CaseIterable, Identifiable {
     case wrenchAndScrewdriver = "wrench.and.screwdriver"
     case wrenchAndScrewdriverFill = "wrench.and.screwdriver.fill"

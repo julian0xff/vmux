@@ -55,7 +55,7 @@
 			A5001095 /* TerminalNotificationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001092 /* TerminalNotificationStore.swift */; };
 			A5001303 /* SurfaceSearchOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001301 /* SurfaceSearchOverlay.swift */; };
 			A5008371 /* BrowserSearchOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5008370 /* BrowserSearchOverlay.swift */; };
-			A5008373 /* BrowserFindJavaScript.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5008372 /* BrowserFindJavaScript.swift */; };
+			/* A5008373 BrowserFindJavaScript.swift moved to VmuxBrowser package */
 			A50012F1 /* Backport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A50012F0 /* Backport.swift */; };
 			/* KeyboardShortcutSettings.swift moved to VmuxCore package */
 			A50012F5 /* KeyboardLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = A50012F4 /* KeyboardLayout.swift */; };
@@ -549,6 +549,7 @@
 					VK000002 /* VmuxSocket */,
 					VU000002 /* VmuxUpdate */,
 					VT000002 /* VmuxTerminal */,
+					VB000002 /* VmuxBrowser */,
 				);
 			name = GhosttyTabs;
 			productName = GhosttyTabs;
@@ -654,6 +655,7 @@
 					VK000001 /* XCLocalSwiftPackageReference "VmuxSocket" */,
 					VU000001 /* XCLocalSwiftPackageReference "VmuxUpdate" */,
 					VT000001 /* XCLocalSwiftPackageReference "VmuxTerminal" */,
+					VB000001 /* XCLocalSwiftPackageReference "VmuxBrowser" */,
 				);
 			productRefGroup = A5001042 /* Products */;
 			projectDirPath = "";
@@ -706,7 +708,7 @@
 				A5001095 /* TerminalNotificationStore.swift in Sources */,
 				A5001303 /* SurfaceSearchOverlay.swift in Sources */,
 				A5008371 /* BrowserSearchOverlay.swift in Sources */,
-				A5008373 /* BrowserFindJavaScript.swift in Sources */,
+				/* BrowserFindJavaScript.swift moved to VmuxBrowser package */
 				/* Panel.swift moved to VmuxCore package */
 				A5001401 /* TerminalPanel.swift in Sources */,
 				A5001402 /* BrowserPanel.swift in Sources */,
@@ -1101,6 +1103,10 @@
 				isa = XCLocalSwiftPackageReference;
 				relativePath = Packages/VmuxTerminal;
 			};
+			VB000001 /* XCLocalSwiftPackageReference "VmuxBrowser" */ = {
+				isa = XCLocalSwiftPackageReference;
+				relativePath = Packages/VmuxBrowser;
+			};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -1143,6 +1149,11 @@
 				isa = XCSwiftPackageProductDependency;
 				package = VT000001 /* XCLocalSwiftPackageReference "VmuxTerminal" */;
 				productName = VmuxTerminal;
+			};
+			VB000002 /* VmuxBrowser */ = {
+				isa = XCSwiftPackageProductDependency;
+				package = VB000001 /* XCLocalSwiftPackageReference "VmuxBrowser" */;
+				productName = VmuxBrowser;
 			};
 /* End XCSwiftPackageProductDependency section */
 

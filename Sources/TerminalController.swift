@@ -5,6 +5,8 @@ import Bonsplit
 import WebKit
 import VmuxCore
 import VmuxSocket
+import VmuxTerminal
+import VmuxBrowser
 /// Unix socket-based controller for programmatic terminal control
 /// Allows automated testing and external control of terminal tabs
 @MainActor
@@ -13946,7 +13948,7 @@ class TerminalController {
         }
 
         v2MainSync {
-            GhosttyApp.shared.reloadConfiguration(soft: soft, source: "socket.reload_config")
+            TerminalEngine.shared?.reloadConfiguration(soft: soft, source: "socket.reload_config")
         }
         return soft ? "OK Reloaded config (soft)" : "OK Reloaded config"
     }

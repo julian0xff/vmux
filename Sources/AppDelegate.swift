@@ -6,6 +6,7 @@ import VmuxSession
 import VmuxSocket
 import VmuxUpdate
 import VmuxTerminal
+import VmuxBrowser
 import CoreServices
 import UserNotifications
 import WebKit
@@ -6510,7 +6511,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             event: event,
             shortcut: StoredShortcut(key: ",", command: true, shift: true, option: false, control: false)
         ) {
-            GhosttyApp.shared.reloadConfiguration(source: "shortcut.cmd_shift_comma")
+            TerminalEngine.shared?.reloadConfiguration(source: "shortcut.cmd_shift_comma")
             return true
         }
 
@@ -8912,7 +8913,7 @@ private extension NSApplication {
 private extension AppDelegate {
     @objc func handleThemesReloadNotification(_ notification: Notification) {
         DispatchQueue.main.async {
-            GhosttyApp.shared.reloadConfiguration(source: "distributed.vmux.themes")
+            TerminalEngine.shared?.reloadConfiguration(source: "distributed.vmux.themes")
         }
     }
 }

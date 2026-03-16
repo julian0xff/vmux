@@ -4,13 +4,13 @@ import Foundation
 ///
 /// Uses TreeWalker to scan text nodes and wraps matches with `<mark>` elements.
 /// The current match gets an additional `.current` class and is scrolled into view.
-enum BrowserFindJavaScript {
+public enum BrowserFindJavaScript {
 
     // MARK: - Public API
 
     /// Returns JS that highlights all occurrences of `query` in the document body.
     /// The script evaluates to a JSON string `{"total":N,"current":0}`.
-    static func searchScript(query: String) -> String {
+    public static func searchScript(query: String) -> String {
         let escaped = jsStringEscape(query)
         return """
         (() => {
@@ -104,7 +104,7 @@ enum BrowserFindJavaScript {
     }
 
     /// Returns JS that moves to the next match. Evaluates to `{"total":N,"current":M}`.
-    static func nextScript() -> String {
+    public static func nextScript() -> String {
         """
         (() => {
           const matches = window.__vmuxFindMatches || [];
@@ -131,7 +131,7 @@ enum BrowserFindJavaScript {
     }
 
     /// Returns JS that moves to the previous match. Evaluates to `{"total":N,"current":M}`.
-    static func previousScript() -> String {
+    public static func previousScript() -> String {
         """
         (() => {
           const matches = window.__vmuxFindMatches || [];
@@ -158,7 +158,7 @@ enum BrowserFindJavaScript {
     }
 
     /// Returns JS that removes all find highlights and restores the DOM.
-    static func clearScript() -> String {
+    public static func clearScript() -> String {
         """
         (() => {
           \(clearBody)
@@ -185,7 +185,7 @@ enum BrowserFindJavaScript {
     """
 
     /// Escape a Swift string for safe embedding inside a JS double-quoted string literal.
-    static func jsStringEscape(_ string: String) -> String {
+    public static func jsStringEscape(_ string: String) -> String {
         var result = ""
         result.reserveCapacity(string.count)
         for scalar in string.unicodeScalars {

@@ -3,6 +3,7 @@ import Bonsplit
 import ObjectiveC
 import SwiftUI
 import WebKit
+import VmuxBrowser
 
 private var vmuxWindowBrowserPortalKey: UInt8 = 0
 private var vmuxWindowBrowserPortalCloseObserverKey: UInt8 = 0
