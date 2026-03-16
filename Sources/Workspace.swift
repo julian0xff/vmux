@@ -1812,6 +1812,7 @@ final class Workspace: Identifiable, ObservableObject {
 
     @discardableResult
     func updatePanelTitle(panelId: UUID, title: String) -> Bool {
+        guard panels[panelId] != nil else { return false }
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return false }
         var didMutate = false
@@ -4827,6 +4828,16 @@ extension Workspace: BonsplitDelegate {
             lastTerminalConfigInheritancePanelId = nil
         }
         AppDelegate.shared?.notificationStore?.clearNotifications(forTabId: id, surfaceId: panelId)
+
+        // After a split panel closes with one remaining, resync the workspace title
+        // from the surviving panel. This prevents transient process titles (like "exit")
+        // from sticking as the workspace name.
+        if panels.count == 1, customTitle == nil,
+           let survivingPanelId = panels.keys.first,
+           let survivingTitle = panelTitles[survivingPanelId],
+           !survivingTitle.isEmpty {
+            applyProcessTitle(survivingTitle)
+        }
 
         // Keep the workspace invariant for normal close paths.
         // Detach/move flows intentionally allow a temporary empty workspace so AppDelegate can
