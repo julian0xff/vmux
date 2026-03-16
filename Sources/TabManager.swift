@@ -2888,26 +2888,59 @@ class TabManager: ObservableObject {
         return true
     }
 
-    /// Resize split - not directly supported by bonsplit, but we can adjust divider positions
+    /// Resize the split adjacent to the focused pane in the given direction.
     func resizeSplit(tabId: UUID, surfaceId: UUID, direction: ResizeDirection, amount: UInt16) -> Bool {
-        // Bonsplit handles resize through its own divider dragging
-        // This is a no-op for now as bonsplit manages divider positions internally
-        return false
+        guard let tab = tabs.first(where: { $0.id == tabId }) else { return false }
+        let controller = tab.bonsplitController
+        guard let focusedPaneId = controller.focusedPaneId?.id else { return false }
+
+        let tree = controller.treeSnapshot()
+        var candidates: [(splitId: UUID, orientation: String, paneInFirstChild: Bool, dividerPosition: CGFloat, axisPixels: CGFloat)] = []
+        _ = resizeSplitCollectCandidates(node: tree, targetPaneId: focusedPaneId.uuidString, candidates: &candidates)
+
+        let requiredOrientation = direction.splitOrientation
+        let requiresFirstChild = direction.requiresPaneInFirstChild
+        guard let candidate = candidates.filter({ $0.orientation == requiredOrientation })
+            .first(where: { $0.paneInFirstChild == requiresFirstChild }) else { return false }
+
+        let delta = CGFloat(amount) / max(candidate.axisPixels, 1)
+        let requested = candidate.dividerPosition + (direction.dividerDeltaSign * delta)
+        let clamped = min(max(requested, 0.1), 0.9)
+        return controller.setDividerPosition(clamped, forSplit: candidate.splitId)
     }
 
-    /// Equalize splits - not directly supported by bonsplit
+    private func resizeSplitCollectCandidates(
+        node: ExternalTreeNode,
+        targetPaneId: String,
+        candidates: inout [(splitId: UUID, orientation: String, paneInFirstChild: Bool, dividerPosition: CGFloat, axisPixels: CGFloat)]
+    ) -> (containsTarget: Bool, bounds: CGRect) {
+        switch node {
+        case .pane(let pane):
+            let bounds = CGRect(x: pane.frame.x, y: pane.frame.y, width: pane.frame.width, height: pane.frame.height)
+            return (pane.id == targetPaneId, bounds)
+        case .split(let split):
+            let first = resizeSplitCollectCandidates(node: split.first, targetPaneId: targetPaneId, candidates: &candidates)
+            let second = resizeSplitCollectCandidates(node: split.second, targetPaneId: targetPaneId, candidates: &candidates)
+            let combinedBounds = first.bounds.union(second.bounds)
+            let containsTarget = first.containsTarget || second.containsTarget
+            if containsTarget, let splitUUID = UUID(uuidString: split.id) {
+                let orientation = split.orientation.lowercased()
+                let axisPixels: CGFloat = orientation == "horizontal" ? combinedBounds.width : combinedBounds.height
+                candidates.append((splitUUID, orientation, first.containsTarget, CGFloat(split.dividerPosition), max(axisPixels, 1)))
+            }
+            return (containsTarget, combinedBounds)
+        }
+    }
+
+    /// Equalize splits so every leaf pane gets equal space.
     func equalizeSplits(tabId: UUID) -> Bool {
         guard let tab = tabs.first(where: { $0.id == tabId }) else { return false }
-
-        var foundSplit = false
-        var allSucceeded = true
-        equalizeSplits(
-            in: tab.bonsplitController.treeSnapshot(),
-            controller: tab.bonsplitController,
-            foundSplit: &foundSplit,
-            allSucceeded: &allSucceeded
-        )
-        return foundSplit && allSucceeded
+        let controller = tab.bonsplitController
+        let leafCount = equalizeSplits(in: controller.treeSnapshot(), controller: controller)
+        if leafCount > 1 {
+            controller.notifyGeometryChange()
+        }
+        return leafCount > 1
     }
 
     /// Toggle zoom on a panel.
@@ -2924,38 +2957,21 @@ class TabManager: ObservableObject {
         return tab.toggleSplitZoom(panelId: focusedPanelId)
     }
 
-    private func equalizeSplits(
-        in node: ExternalTreeNode,
-        controller: BonsplitController,
-        foundSplit: inout Bool,
-        allSucceeded: inout Bool
-    ) {
+    /// Recursively equalize splits. Returns the number of leaf panes in the subtree.
+    /// Each split's divider is set to firstLeaves/totalLeaves so every leaf gets equal space.
+    @discardableResult
+    private func equalizeSplits(in node: ExternalTreeNode, controller: BonsplitController) -> Int {
         switch node {
         case .pane:
-            return
+            return 1
         case .split(let splitNode):
-            foundSplit = true
-            guard let splitId = UUID(uuidString: splitNode.id) else {
-                allSucceeded = false
-                return
+            let firstCount = equalizeSplits(in: splitNode.first, controller: controller)
+            let secondCount = equalizeSplits(in: splitNode.second, controller: controller)
+            let position = CGFloat(firstCount) / CGFloat(firstCount + secondCount)
+            if let splitId = UUID(uuidString: splitNode.id) {
+                controller.setDividerPosition(position, forSplit: splitId, notify: false)
             }
-
-            if !controller.setDividerPosition(0.5, forSplit: splitId) {
-                allSucceeded = false
-            }
-
-            equalizeSplits(
-                in: splitNode.first,
-                controller: controller,
-                foundSplit: &foundSplit,
-                allSucceeded: &allSucceeded
-            )
-            equalizeSplits(
-                in: splitNode.second,
-                controller: controller,
-                foundSplit: &foundSplit,
-                allSucceeded: &allSucceeded
-            )
+            return firstCount + secondCount
         }
     }
 
@@ -4485,6 +4501,24 @@ enum SplitDirection {
 /// Resize direction for backwards compatibility
 enum ResizeDirection {
     case left, right, up, down
+
+    var splitOrientation: String {
+        switch self {
+        case .left, .right: return "horizontal"
+        case .up, .down: return "vertical"
+        }
+    }
+
+    var requiresPaneInFirstChild: Bool {
+        switch self {
+        case .right, .down: return true
+        case .left, .up: return false
+        }
+    }
+
+    var dividerDeltaSign: CGFloat {
+        requiresPaneInFirstChild ? 1 : -1
+    }
 }
 
 extension Notification.Name {

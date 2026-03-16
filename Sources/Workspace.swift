@@ -600,7 +600,7 @@ extension Workspace {
                 _ = bonsplitController.setDividerPosition(
                     CGFloat(snapshotSplit.dividerPosition),
                     forSplit: splitID,
-                    fromExternal: true
+                    notify: false
                 )
             }
             applySessionDividerPositions(snapshotNode: snapshotSplit.first, liveNode: liveSplit.first)

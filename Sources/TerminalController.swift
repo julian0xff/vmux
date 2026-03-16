@@ -4988,7 +4988,7 @@ class TerminalController {
             let delta = CGFloat(amount) / candidate.axisPixels
             let requested = candidate.dividerPosition + (direction.dividerDeltaSign * delta)
             let clamped = min(max(requested, 0.1), 0.9)
-            guard ws.bonsplitController.setDividerPosition(clamped, forSplit: candidate.splitId, fromExternal: true) else {
+            guard ws.bonsplitController.setDividerPosition(clamped, forSplit: candidate.splitId) else {
                 result = .err(
                     code: "internal_error",
                     message: "Failed to set split divider position",
