@@ -2673,6 +2673,12 @@ struct ContentView: View {
 
         view = AnyView(view.background(WindowAccessor { [sidebarBlendMode, bgGlassEnabled, bgGlassTintHex, bgGlassTintOpacity] window in
             window.identifier = NSUserInterfaceItemIdentifier(windowIdentifier)
+            // Ensure non-empty AX title so focus-follows-mouse tools (AutoRaise) can
+            // identify and raise this window. TabManager updates it to the workspace name.
+            if window.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                window.title = "vmux"
+                window.setAccessibilityTitle("vmux")
+            }
             window.titlebarAppearsTransparent = true
             // Do not make the entire background draggable; it interferes with drag gestures
             // like sidebar tab reordering in multi-window mode.

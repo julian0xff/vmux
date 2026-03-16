@@ -2415,7 +2415,7 @@ class TabManager: ObservableObject {
         }
     }
 
-    private func updateWindowTitleForSelectedTab() {
+    func updateWindowTitleForSelectedTab() {
         guard let selectedTabId,
               let tab = tabs.first(where: { $0.id == selectedTabId }) else {
             updateWindowTitle(for: nil)
@@ -2428,6 +2428,7 @@ class TabManager: ObservableObject {
         let title = windowTitle(for: tab)
         guard let targetWindow = window else { return }
         targetWindow.title = title
+        targetWindow.setAccessibilityTitle(title)
     }
 
     private func windowTitle(for tab: Workspace?) -> String {

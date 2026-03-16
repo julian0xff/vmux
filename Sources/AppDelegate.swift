@@ -3357,6 +3357,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         sidebarSelectionState: SidebarSelectionState
     ) {
         tabManager.window = window
+        tabManager.updateWindowTitleForSelectedTab()
 
         let key = ObjectIdentifier(window)
         #if DEBUG
@@ -5397,7 +5398,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             backing: .buffered,
             defer: false
         )
-        window.title = ""
+        window.title = "vmux"
+        window.setAccessibilityTitle(window.title)
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
         window.isMovableByWindowBackground = false
