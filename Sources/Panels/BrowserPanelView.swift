@@ -71,7 +71,7 @@ enum BrowserDevToolsIconColorOption: String, CaseIterable, Identifiable {
             // Matches Bonsplit tab icon tint for active tabs.
             return Color(nsColor: .labelColor)
         case .accent:
-            return cmuxAccentColor()
+            return vmuxAccentColor()
         case .tertiary:
             return Color(nsColor: .tertiaryLabelColor)
         }
@@ -156,7 +156,7 @@ private struct OmnibarAddressButtonStyleBody: View {
 }
 
 private extension View {
-    func cmuxFlatSymbolColorRendering() -> some View {
+    func vmuxFlatSymbolColorRendering() -> some View {
         // `symbolColorRenderingMode(.flat)` is not available in the current SDK
         // used by CI/local builds. Keep this modifier as a compatibility no-op.
         self
@@ -258,12 +258,12 @@ struct BrowserPanelView: View {
     private var remoteSuggestionsEnabled: Bool {
         // Deterministic UI-test hook: force remote path on even if a persisted
         // setting disabled suggestions in previous sessions.
-        if ProcessInfo.processInfo.environment["CMUX_UI_TEST_REMOTE_SUGGESTIONS_JSON"] != nil ||
-            UserDefaults.standard.string(forKey: "CMUX_UI_TEST_REMOTE_SUGGESTIONS_JSON") != nil {
+        if ProcessInfo.processInfo.environment["VMUX_UI_TEST_REMOTE_SUGGESTIONS_JSON"] != nil ||
+            UserDefaults.standard.string(forKey: "VMUX_UI_TEST_REMOTE_SUGGESTIONS_JSON") != nil {
             return true
         }
         // Keep UI tests deterministic by disabling network suggestions when requested.
-        if ProcessInfo.processInfo.environment["CMUX_UI_TEST_DISABLE_REMOTE_SUGGESTIONS"] == "1" {
+        if ProcessInfo.processInfo.environment["VMUX_UI_TEST_DISABLE_REMOTE_SUGGESTIONS"] == "1" {
             return false
         }
         return searchSuggestionsEnabled
@@ -358,8 +358,8 @@ struct BrowserPanelView: View {
         }
         .overlay {
             RoundedRectangle(cornerRadius: FocusFlashPattern.ringCornerRadius)
-                .stroke(cmuxAccentColor().opacity(focusFlashOpacity), lineWidth: 3)
-                .shadow(color: cmuxAccentColor().opacity(focusFlashOpacity * 0.35), radius: 10)
+                .stroke(vmuxAccentColor().opacity(focusFlashOpacity), lineWidth: 3)
+                .shadow(color: vmuxAccentColor().opacity(focusFlashOpacity * 0.35), radius: 10)
                 .padding(FocusFlashPattern.ringInset)
                 .allowsHitTesting(false)
         }
@@ -394,7 +394,7 @@ struct BrowserPanelView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .webViewDidReceiveClick).filter { [weak panel] note in
             // Only handle clicks from our own webview.
-            guard let webView = note.object as? CmuxWebView else { return false }
+            guard let webView = note.object as? VmuxWebView else { return false }
             return webView === panel?.webView
         }) { _ in
 #if DEBUG
@@ -661,7 +661,7 @@ struct BrowserPanelView: View {
         }) {
             Image(systemName: devToolsIconOption.rawValue)
                 .symbolRenderingMode(.monochrome)
-                .cmuxFlatSymbolColorRendering()
+                .vmuxFlatSymbolColorRendering()
                 .font(.system(size: devToolsButtonIconSize, weight: .medium))
                 .foregroundStyle(devToolsColorOption.color)
                 .frame(width: addressBarButtonSize, height: addressBarButtonSize, alignment: .center)
@@ -678,7 +678,7 @@ struct BrowserPanelView: View {
         }) {
             Image(systemName: browserThemeMode.iconName)
                 .symbolRenderingMode(.monochrome)
-                .cmuxFlatSymbolColorRendering()
+                .vmuxFlatSymbolColorRendering()
                 .font(.system(size: devToolsButtonIconSize, weight: .medium))
                 .foregroundStyle(browserThemeModeIconColor)
                 .frame(width: addressBarButtonSize, height: addressBarButtonSize, alignment: .center)
@@ -802,7 +802,7 @@ struct BrowserPanelView: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: omnibarPillCornerRadius, style: .continuous)
-                .stroke(addressBarFocused ? cmuxAccentColor() : Color.clear, lineWidth: 1)
+                .stroke(addressBarFocused ? vmuxAccentColor() : Color.clear, lineWidth: 1)
         )
         .accessibilityElement(children: .contain)
         .background {
@@ -911,20 +911,20 @@ struct BrowserPanelView: View {
         reason: String,
         isPanelFocusedOverride: Bool? = nil
     ) {
-        guard let cmuxWebView = panel.webView as? CmuxWebView else { return }
+        guard let vmuxWebView = panel.webView as? VmuxWebView else { return }
         let isPanelFocused = isPanelFocusedOverride ?? isFocused
         let next = isPanelFocused && !panel.shouldSuppressWebViewFocus()
-        if cmuxWebView.allowsFirstResponderAcquisition != next {
+        if vmuxWebView.allowsFirstResponderAcquisition != next {
 #if DEBUG
             dlog(
                 "browser.focus.policy.resync panel=\(panel.id.uuidString.prefix(5)) " +
-                "web=\(ObjectIdentifier(cmuxWebView)) old=\(cmuxWebView.allowsFirstResponderAcquisition ? 1 : 0) " +
+                "web=\(ObjectIdentifier(vmuxWebView)) old=\(vmuxWebView.allowsFirstResponderAcquisition ? 1 : 0) " +
                 "new=\(next ? 1 : 0) reason=\(reason) " +
                 "panelFocusedUsed=\(isPanelFocused ? 1 : 0)"
             )
 #endif
         }
-        cmuxWebView.allowsFirstResponderAcquisition = next
+        vmuxWebView.allowsFirstResponderAcquisition = next
     }
 
     private func setAddressBarFocused(_ focused: Bool, reason: String) {
@@ -1289,10 +1289,10 @@ struct BrowserPanelView: View {
 
     private func refreshSuggestions() {
 #if DEBUG
-        let typingTimingStart = CmuxTypingTiming.start()
+        let typingTimingStart = VmuxTypingTiming.start()
         defer {
             let trimmedQuery = omnibarState.buffer.trimmingCharacters(in: .whitespacesAndNewlines)
-            CmuxTypingTiming.logDuration(
+            VmuxTypingTiming.logDuration(
                 path: "browser.omnibar.refreshSuggestions",
                 startedAt: typingTimingStart,
                 extra: "focused=\(addressBarFocused ? 1 : 0) queryLen=\(trimmedQuery.utf8.count) suggestionCount=\(omnibarState.suggestions.count)"
@@ -1506,8 +1506,8 @@ struct BrowserPanelView: View {
     }
 
     private func forcedRemoteSuggestionsForUITest() -> [String]? {
-        let raw = ProcessInfo.processInfo.environment["CMUX_UI_TEST_REMOTE_SUGGESTIONS_JSON"]
-            ?? UserDefaults.standard.string(forKey: "CMUX_UI_TEST_REMOTE_SUGGESTIONS_JSON")
+        let raw = ProcessInfo.processInfo.environment["VMUX_UI_TEST_REMOTE_SUGGESTIONS_JSON"]
+            ?? UserDefaults.standard.string(forKey: "VMUX_UI_TEST_REMOTE_SUGGESTIONS_JSON")
         guard let raw,
               let data = raw.data(using: .utf8),
               let parsed = try? JSONSerialization.jsonObject(with: data) as? [Any] else {
@@ -2714,10 +2714,10 @@ private final class OmnibarNativeTextField: NSTextField {
 
     override func keyDown(with event: NSEvent) {
 #if DEBUG
-        let typingTimingStart = CmuxTypingTiming.start()
+        let typingTimingStart = VmuxTypingTiming.start()
         var route = "super"
         defer {
-            CmuxTypingTiming.logDuration(
+            VmuxTypingTiming.logDuration(
                 path: "browser.omnibar.keyDown",
                 startedAt: typingTimingStart,
                 event: event,
@@ -2744,10 +2744,10 @@ private final class OmnibarNativeTextField: NSTextField {
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
 #if DEBUG
-        let typingTimingStart = CmuxTypingTiming.start()
+        let typingTimingStart = VmuxTypingTiming.start()
         var handled = false
         defer {
-            CmuxTypingTiming.logDuration(
+            VmuxTypingTiming.logDuration(
                 path: "browser.omnibar.performKeyEquivalent",
                 startedAt: typingTimingStart,
                 event: event,
@@ -2997,9 +2997,9 @@ private struct OmnibarTextFieldRepresentable: NSViewRepresentable {
 
         func controlTextDidChange(_ obj: Notification) {
 #if DEBUG
-            let typingTimingStart = CmuxTypingTiming.start()
+            let typingTimingStart = VmuxTypingTiming.start()
             defer {
-                CmuxTypingTiming.logDuration(
+                VmuxTypingTiming.logDuration(
                     path: "browser.omnibar.controlTextDidChange",
                     startedAt: typingTimingStart,
                     event: NSApp.currentEvent,
@@ -3021,10 +3021,10 @@ private struct OmnibarTextFieldRepresentable: NSViewRepresentable {
 
         func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
 #if DEBUG
-            let typingTimingStart = CmuxTypingTiming.start()
+            let typingTimingStart = VmuxTypingTiming.start()
             var handled = false
             defer {
-                CmuxTypingTiming.logDuration(
+                VmuxTypingTiming.logDuration(
                     path: "browser.omnibar.doCommandBy",
                     startedAt: typingTimingStart,
                     event: NSApp.currentEvent,
@@ -3151,10 +3151,10 @@ private struct OmnibarTextFieldRepresentable: NSViewRepresentable {
 
         func handleKeyEvent(_ event: NSEvent, editor: NSTextView?) -> Bool {
 #if DEBUG
-            let typingTimingStart = CmuxTypingTiming.start()
+            let typingTimingStart = VmuxTypingTiming.start()
             var handled = false
             defer {
-                CmuxTypingTiming.logDuration(
+                VmuxTypingTiming.logDuration(
                     path: "browser.omnibar.handleKeyEvent",
                     startedAt: typingTimingStart,
                     event: event,
@@ -3876,14 +3876,14 @@ struct WebViewRepresentable: NSViewRepresentable {
                     if (typeof WI === "undefined")
                         return null;
                     const allowSideDock = \(sideDockAllowedLiteral);
-                    if (!WI.__cmuxOriginalUpdateDockNavigationItems && typeof WI._updateDockNavigationItems === "function")
-                        WI.__cmuxOriginalUpdateDockNavigationItems = WI._updateDockNavigationItems;
-                    if (!WI.__cmuxOriginalDockLeft && typeof WI._dockLeft === "function")
-                        WI.__cmuxOriginalDockLeft = WI._dockLeft;
-                    if (!WI.__cmuxOriginalDockRight && typeof WI._dockRight === "function")
-                        WI.__cmuxOriginalDockRight = WI._dockRight;
-                    if (!WI.__cmuxOriginalTogglePreviousDockConfiguration && typeof WI._togglePreviousDockConfiguration === "function")
-                        WI.__cmuxOriginalTogglePreviousDockConfiguration = WI._togglePreviousDockConfiguration;
+                    if (!WI.__vmuxOriginalUpdateDockNavigationItems && typeof WI._updateDockNavigationItems === "function")
+                        WI.__vmuxOriginalUpdateDockNavigationItems = WI._updateDockNavigationItems;
+                    if (!WI.__vmuxOriginalDockLeft && typeof WI._dockLeft === "function")
+                        WI.__vmuxOriginalDockLeft = WI._dockLeft;
+                    if (!WI.__vmuxOriginalDockRight && typeof WI._dockRight === "function")
+                        WI.__vmuxOriginalDockRight = WI._dockRight;
+                    if (!WI.__vmuxOriginalTogglePreviousDockConfiguration && typeof WI._togglePreviousDockConfiguration === "function")
+                        WI.__vmuxOriginalTogglePreviousDockConfiguration = WI._togglePreviousDockConfiguration;
                     function callOriginal(fn, event) {
                         return typeof fn === "function" ? fn.call(WI, event) : null;
                     }
@@ -3897,34 +3897,34 @@ struct WebViewRepresentable: NSViewRepresentable {
                         }
                     }
                     function enforceDockControls() {
-                        const disallowSideDock = !WI.__cmuxAllowSideDock;
+                        const disallowSideDock = !WI.__vmuxAllowSideDock;
                         updateButton(WI._dockLeftTabBarButton, disallowSideDock || WI.dockConfiguration === WI.DockConfiguration.Left);
                         updateButton(WI._dockRightTabBarButton, disallowSideDock || WI.dockConfiguration === WI.DockConfiguration.Right);
                     }
-                    WI.__cmuxAllowSideDock = allowSideDock;
+                    WI.__vmuxAllowSideDock = allowSideDock;
                     WI._dockLeft = function(event) {
-                        if (!WI.__cmuxAllowSideDock)
+                        if (!WI.__vmuxAllowSideDock)
                             return callOriginal(WI._dockBottom, event);
-                        return callOriginal(WI.__cmuxOriginalDockLeft, event);
+                        return callOriginal(WI.__vmuxOriginalDockLeft, event);
                     };
                     WI._dockRight = function(event) {
-                        if (!WI.__cmuxAllowSideDock)
+                        if (!WI.__vmuxAllowSideDock)
                             return callOriginal(WI._dockBottom, event);
-                        return callOriginal(WI.__cmuxOriginalDockRight, event);
+                        return callOriginal(WI.__vmuxOriginalDockRight, event);
                     };
                     WI._togglePreviousDockConfiguration = function(event) {
                         const previousSideDock = WI._previousDockConfiguration === WI.DockConfiguration.Left || WI._previousDockConfiguration === WI.DockConfiguration.Right;
-                        if (!WI.__cmuxAllowSideDock && previousSideDock)
+                        if (!WI.__vmuxAllowSideDock && previousSideDock)
                             return callOriginal(WI._dockBottom, event);
-                        return callOriginal(WI.__cmuxOriginalTogglePreviousDockConfiguration, event);
+                        return callOriginal(WI.__vmuxOriginalTogglePreviousDockConfiguration, event);
                     };
                     WI._updateDockNavigationItems = function(...args) {
-                        if (typeof WI.__cmuxOriginalUpdateDockNavigationItems === "function")
-                            WI.__cmuxOriginalUpdateDockNavigationItems.apply(WI, args);
+                        if (typeof WI.__vmuxOriginalUpdateDockNavigationItems === "function")
+                            WI.__vmuxOriginalUpdateDockNavigationItems.apply(WI, args);
                         enforceDockControls();
                     };
                     WI._updateDockNavigationItems();
-                    return WI.__cmuxAllowSideDock;
+                    return WI.__vmuxAllowSideDock;
                 })();
                 """,
                 completionHandler: nil
@@ -5353,7 +5353,7 @@ struct WebViewRepresentable: NSViewRepresentable {
             width: preferredAttachedWidthState.width,
             widthFraction: preferredAttachedWidthState.widthFraction
         )
-        host.setHostedInspectorFrontendWebView(webView.cmuxInspectorFrontendWebView())
+        host.setHostedInspectorFrontendWebView(webView.vmuxInspectorFrontendWebView())
         host.onPreferredHostedInspectorWidthChanged = { [weak browserPanel = panel] width, _ in
             guard let browserPanel else { return }
             browserPanel.recordPreferredAttachedDeveloperToolsWidth(
@@ -5396,7 +5396,7 @@ struct WebViewRepresentable: NSViewRepresentable {
             host.scheduleHostedInspectorDividerReapply(reason: "localInline.update.sync")
             DispatchQueue.main.async { [weak host, weak webView] in
                 guard let host, let webView else { return }
-                host.setHostedInspectorFrontendWebView(webView.cmuxInspectorFrontendWebView())
+                host.setHostedInspectorFrontendWebView(webView.vmuxInspectorFrontendWebView())
                 host.scheduleHostedInspectorDockConfigurationSync(reason: "localInline.update.async")
             }
         } else {
@@ -5718,19 +5718,19 @@ struct WebViewRepresentable: NSViewRepresentable {
         webView: WKWebView,
         isPanelFocused: Bool
     ) {
-        guard let cmuxWebView = webView as? CmuxWebView else { return }
+        guard let vmuxWebView = webView as? VmuxWebView else { return }
         let next = isPanelFocused && !panel.shouldSuppressWebViewFocus()
-        if cmuxWebView.allowsFirstResponderAcquisition != next {
+        if vmuxWebView.allowsFirstResponderAcquisition != next {
 #if DEBUG
             dlog(
                 "browser.focus.policy panel=\(panel.id.uuidString.prefix(5)) " +
-                "web=\(ObjectIdentifier(cmuxWebView)) old=\(cmuxWebView.allowsFirstResponderAcquisition ? 1 : 0) " +
+                "web=\(ObjectIdentifier(vmuxWebView)) old=\(vmuxWebView.allowsFirstResponderAcquisition ? 1 : 0) " +
                 "new=\(next ? 1 : 0) isPanelFocused=\(isPanelFocused ? 1 : 0) " +
                 "suppress=\(panel.shouldSuppressWebViewFocus() ? 1 : 0)"
             )
 #endif
         }
-        cmuxWebView.allowsFirstResponderAcquisition = next
+        vmuxWebView.allowsFirstResponderAcquisition = next
     }
 
     static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) {

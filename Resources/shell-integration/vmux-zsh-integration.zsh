@@ -1,0 +1,574 @@
+# vmux shell integration for zsh
+# Injected automatically — do not source manually
+
+_vmux_send() {
+    local payload="$1"
+    if command -v ncat >/dev/null 2>&1; then
+        print -r -- "$payload" | ncat -w 1 -U "$VMUX_SOCKET_PATH" --send-only
+    elif command -v socat >/dev/null 2>&1; then
+        print -r -- "$payload" | socat -T 1 - "UNIX-CONNECT:$VMUX_SOCKET_PATH"
+    elif command -v nc >/dev/null 2>&1; then
+        # Some nc builds don't support unix sockets, but keep as a last-ditch fallback.
+        #
+        # Important: macOS/BSD nc will often wait for the peer to close the socket
+        # after it has finished writing. vmux keeps the connection open, so
+        # a plain `nc -U` can hang indefinitely and leak background processes.
+        #
+        # Prefer flags that guarantee we exit after sending, and fall back to a
+        # short timeout so we never block sidebar updates.
+        if print -r -- "$payload" | nc -N -U "$VMUX_SOCKET_PATH" >/dev/null 2>&1; then
+            :
+        else
+            print -r -- "$payload" | nc -w 1 -U "$VMUX_SOCKET_PATH" >/dev/null 2>&1 || true
+        fi
+    fi
+}
+
+_vmux_restore_scrollback_once() {
+    local path="${VMUX_RESTORE_SCROLLBACK_FILE:-}"
+    [[ -n "$path" ]] || return 0
+    unset VMUX_RESTORE_SCROLLBACK_FILE
+
+    if [[ -r "$path" ]]; then
+        /bin/cat -- "$path" 2>/dev/null || true
+        /bin/rm -f -- "$path" >/dev/null 2>&1 || true
+    fi
+}
+_vmux_restore_scrollback_once
+
+# Throttle heavy work to avoid prompt latency.
+typeset -g _VMUX_PWD_LAST_PWD=""
+typeset -g _VMUX_GIT_LAST_PWD=""
+typeset -g _VMUX_GIT_LAST_RUN=0
+typeset -g _VMUX_GIT_JOB_PID=""
+typeset -g _VMUX_GIT_JOB_STARTED_AT=0
+typeset -g _VMUX_GIT_FORCE=0
+typeset -g _VMUX_GIT_HEAD_LAST_PWD=""
+typeset -g _VMUX_GIT_HEAD_PATH=""
+typeset -g _VMUX_GIT_HEAD_SIGNATURE=""
+typeset -g _VMUX_GIT_HEAD_WATCH_PID=""
+typeset -g _VMUX_PR_POLL_PID=""
+typeset -g _VMUX_PR_POLL_PWD=""
+typeset -g _VMUX_PR_POLL_INTERVAL=45
+typeset -g _VMUX_PR_FORCE=0
+typeset -g _VMUX_ASYNC_JOB_TIMEOUT=20
+
+typeset -g _VMUX_PORTS_LAST_RUN=0
+typeset -g _VMUX_CMD_START=0
+typeset -g _VMUX_SHELL_ACTIVITY_LAST=""
+typeset -g _VMUX_TTY_NAME=""
+typeset -g _VMUX_TTY_REPORTED=0
+
+_vmux_git_resolve_head_path() {
+    # Resolve the HEAD file path without invoking git (fast; works for worktrees).
+    local dir="$PWD"
+    while true; do
+        if [[ -d "$dir/.git" ]]; then
+            print -r -- "$dir/.git/HEAD"
+            return 0
+        fi
+        if [[ -f "$dir/.git" ]]; then
+            local line gitdir
+            line="$(<"$dir/.git")"
+            if [[ "$line" == gitdir:* ]]; then
+                gitdir="${line#gitdir:}"
+                gitdir="${gitdir## }"
+                gitdir="${gitdir%% }"
+                [[ -n "$gitdir" ]] || return 1
+                [[ "$gitdir" != /* ]] && gitdir="$dir/$gitdir"
+                print -r -- "$gitdir/HEAD"
+                return 0
+            fi
+        fi
+        [[ "$dir" == "/" || -z "$dir" ]] && break
+        dir="${dir:h}"
+    done
+    return 1
+}
+
+_vmux_git_head_signature() {
+    local head_path="$1"
+    [[ -n "$head_path" && -r "$head_path" ]] || return 1
+    local line=""
+    if IFS= read -r line < "$head_path"; then
+        print -r -- "$line"
+        return 0
+    fi
+    return 1
+}
+
+_vmux_report_tty_once() {
+    # Send the TTY name to the app once per session so the batched port scanner
+    # knows which TTY belongs to this panel.
+    (( _VMUX_TTY_REPORTED )) && return 0
+    [[ -S "$VMUX_SOCKET_PATH" ]] || return 0
+    [[ -n "$VMUX_TAB_ID" ]] || return 0
+    [[ -n "$VMUX_PANEL_ID" ]] || return 0
+    [[ -n "$_VMUX_TTY_NAME" ]] || return 0
+    _VMUX_TTY_REPORTED=1
+    {
+        _vmux_send "report_tty $_VMUX_TTY_NAME --tab=$VMUX_TAB_ID --panel=$VMUX_PANEL_ID"
+    } >/dev/null 2>&1 &!
+}
+
+_vmux_report_shell_activity_state() {
+    local state="$1"
+    [[ -n "$state" ]] || return 0
+    [[ -S "$VMUX_SOCKET_PATH" ]] || return 0
+    [[ -n "$VMUX_TAB_ID" ]] || return 0
+    [[ -n "$VMUX_PANEL_ID" ]] || return 0
+    [[ "$_VMUX_SHELL_ACTIVITY_LAST" == "$state" ]] && return 0
+    _VMUX_SHELL_ACTIVITY_LAST="$state"
+    {
+        _vmux_send "report_shell_state $state --tab=$VMUX_TAB_ID --panel=$VMUX_PANEL_ID"
+    } >/dev/null 2>&1 &!
+}
+
+_vmux_ports_kick() {
+    # Lightweight: just tell the app to run a batched scan for this panel.
+    # The app coalesces kicks across all panels and runs a single ps+lsof.
+    [[ -S "$VMUX_SOCKET_PATH" ]] || return 0
+    [[ -n "$VMUX_TAB_ID" ]] || return 0
+    [[ -n "$VMUX_PANEL_ID" ]] || return 0
+    _VMUX_PORTS_LAST_RUN=$EPOCHSECONDS
+    {
+        _vmux_send "ports_kick --tab=$VMUX_TAB_ID --panel=$VMUX_PANEL_ID"
+    } >/dev/null 2>&1 &!
+}
+
+_vmux_report_git_branch_for_path() {
+    local repo_path="$1"
+    [[ -n "$repo_path" ]] || return 0
+    [[ -S "$VMUX_SOCKET_PATH" ]] || return 0
+    [[ -n "$VMUX_TAB_ID" ]] || return 0
+    [[ -n "$VMUX_PANEL_ID" ]] || return 0
+
+    local branch dirty_opt="" first
+    branch="$(git -C "$repo_path" branch --show-current 2>/dev/null)"
+    if [[ -n "$branch" ]]; then
+        first="$(git -C "$repo_path" status --porcelain -uno 2>/dev/null | head -1)"
+        [[ -n "$first" ]] && dirty_opt="--status=dirty"
+        _vmux_send "report_git_branch $branch $dirty_opt --tab=$VMUX_TAB_ID --panel=$VMUX_PANEL_ID"
+    else
+        _vmux_send "clear_git_branch --tab=$VMUX_TAB_ID --panel=$VMUX_PANEL_ID"
+    fi
+}
+
+_vmux_clear_pr_for_panel() {
+    [[ -S "$VMUX_SOCKET_PATH" ]] || return 0
+    [[ -n "$VMUX_TAB_ID" ]] || return 0
+    [[ -n "$VMUX_PANEL_ID" ]] || return 0
+    _vmux_send "clear_pr --tab=$VMUX_TAB_ID --panel=$VMUX_PANEL_ID"
+}
+
+_vmux_pr_output_indicates_no_pull_request() {
+    local output="${1:l}"
+    [[ "$output" == *"no pull requests found"* \
+        || "$output" == *"no pull request found"* \
+        || "$output" == *"no pull requests associated"* \
+        || "$output" == *"no pull request associated"* ]]
+}
+
+_vmux_report_pr_for_path() {
+    local repo_path="$1"
+    [[ -n "$repo_path" ]] || {
+        _vmux_clear_pr_for_panel
+        return 0
+    }
+    [[ -d "$repo_path" ]] || {
+        _vmux_clear_pr_for_panel
+        return 0
+    }
+    [[ -S "$VMUX_SOCKET_PATH" ]] || return 0
+    [[ -n "$VMUX_TAB_ID" ]] || return 0
+    [[ -n "$VMUX_PANEL_ID" ]] || return 0
+
+    local branch gh_output gh_error="" err_file="" number state url status_opt="" gh_status
+    branch="$(git -C "$repo_path" branch --show-current 2>/dev/null)"
+    if [[ -z "$branch" ]] || ! command -v gh >/dev/null 2>&1; then
+        _vmux_clear_pr_for_panel
+        return 0
+    fi
+
+    err_file="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/vmux-gh-pr-view.XXXXXX" 2>/dev/null || true)"
+    [[ -n "$err_file" ]] || return 1
+    gh_output="$(
+        builtin cd "$repo_path" 2>/dev/null \
+            && gh pr view \
+                --json number,state,url \
+                --jq '[.number, .state, .url] | @tsv' \
+                2>"$err_file"
+    )"
+    gh_status=$?
+    if [[ -f "$err_file" ]]; then
+        gh_error="$("/bin/cat" -- "$err_file" 2>/dev/null || true)"
+        /bin/rm -f -- "$err_file" >/dev/null 2>&1 || true
+    fi
+    if (( gh_status != 0 )); then
+        if _vmux_pr_output_indicates_no_pull_request "$gh_error"; then
+            _vmux_clear_pr_for_panel
+            return 0
+        fi
+        # Keep the last-known PR badge on transient gh failures (auth hiccups,
+        # API lag after creation, or rate limiting) and retry on the next poll.
+        return 1
+    fi
+    if [[ -z "$gh_output" ]]; then
+        _vmux_clear_pr_for_panel
+        return 0
+    fi
+
+    local IFS=$'\t'
+    read -r number state url <<< "$gh_output"
+    if [[ -z "$number" ]] || [[ -z "$url" ]]; then
+        return 1
+    fi
+
+    case "$state" in
+        MERGED) status_opt="--state=merged" ;;
+        OPEN) status_opt="--state=open" ;;
+        CLOSED) status_opt="--state=closed" ;;
+        *) return 1 ;;
+    esac
+
+    _vmux_send "report_pr $number $url $status_opt --tab=$VMUX_TAB_ID --panel=$VMUX_PANEL_ID"
+}
+
+_vmux_child_pids() {
+    local parent_pid="$1"
+    [[ -n "$parent_pid" ]] || return 0
+    /bin/ps -ax -o pid= -o ppid= 2>/dev/null | /usr/bin/awk -v parent="$parent_pid" '$2 == parent { print $1 }'
+}
+
+_vmux_kill_process_tree() {
+    local pid="$1"
+    local signal="${2:-TERM}"
+    local child_pid=""
+    [[ -n "$pid" ]] || return 0
+
+    while IFS= read -r child_pid; do
+        [[ -n "$child_pid" ]] || continue
+        [[ "$child_pid" == "$pid" ]] && continue
+        _vmux_kill_process_tree "$child_pid" "$signal"
+    done < <(_vmux_child_pids "$pid")
+
+    kill "-$signal" "$pid" >/dev/null 2>&1 || true
+}
+
+_vmux_run_pr_probe_with_timeout() {
+    local repo_path="$1"
+    local probe_pid=""
+    local started_at=$EPOCHSECONDS
+    local now=$started_at
+
+    (
+        _vmux_report_pr_for_path "$repo_path"
+    ) &
+    probe_pid=$!
+
+    while kill -0 "$probe_pid" >/dev/null 2>&1; do
+        sleep 1
+        now=$EPOCHSECONDS
+        if (( _VMUX_ASYNC_JOB_TIMEOUT > 0 )) && (( now - started_at >= _VMUX_ASYNC_JOB_TIMEOUT )); then
+            _vmux_kill_process_tree "$probe_pid" TERM
+            sleep 0.2
+            if kill -0 "$probe_pid" >/dev/null 2>&1; then
+                _vmux_kill_process_tree "$probe_pid" KILL
+                sleep 0.2
+            fi
+            if ! kill -0 "$probe_pid" >/dev/null 2>&1; then
+                wait "$probe_pid" >/dev/null 2>&1 || true
+            fi
+            return 1
+        fi
+    done
+
+    wait "$probe_pid"
+}
+
+_vmux_stop_pr_poll_loop() {
+    if [[ -n "$_VMUX_PR_POLL_PID" ]]; then
+        _vmux_kill_process_tree "$_VMUX_PR_POLL_PID" TERM
+        sleep 0.1
+        if kill -0 "$_VMUX_PR_POLL_PID" >/dev/null 2>&1; then
+            _vmux_kill_process_tree "$_VMUX_PR_POLL_PID" KILL
+        fi
+        _VMUX_PR_POLL_PID=""
+    fi
+}
+
+_vmux_start_pr_poll_loop() {
+    [[ -S "$VMUX_SOCKET_PATH" ]] || return 0
+    [[ -n "$VMUX_TAB_ID" ]] || return 0
+    [[ -n "$VMUX_PANEL_ID" ]] || return 0
+
+    local watch_pwd="${1:-$PWD}"
+    local force_restart="${2:-0}"
+    local watch_shell_pid="$$"
+    local interval="${_VMUX_PR_POLL_INTERVAL:-45}"
+
+    if [[ "$force_restart" != "1" && "$watch_pwd" == "$_VMUX_PR_POLL_PWD" && -n "$_VMUX_PR_POLL_PID" ]] \
+        && kill -0 "$_VMUX_PR_POLL_PID" 2>/dev/null; then
+        return 0
+    fi
+
+    _vmux_stop_pr_poll_loop
+    _VMUX_PR_POLL_PWD="$watch_pwd"
+
+    {
+        while true; do
+            kill -0 "$watch_shell_pid" >/dev/null 2>&1 || break
+            _vmux_run_pr_probe_with_timeout "$watch_pwd" || true
+            sleep "$interval"
+        done
+    } >/dev/null 2>&1 &!
+    _VMUX_PR_POLL_PID=$!
+}
+
+_vmux_stop_git_head_watch() {
+    if [[ -n "$_VMUX_GIT_HEAD_WATCH_PID" ]]; then
+        kill "$_VMUX_GIT_HEAD_WATCH_PID" >/dev/null 2>&1 || true
+        _VMUX_GIT_HEAD_WATCH_PID=""
+    fi
+}
+
+_vmux_start_git_head_watch() {
+    [[ -S "$VMUX_SOCKET_PATH" ]] || return 0
+    [[ -n "$VMUX_TAB_ID" ]] || return 0
+    [[ -n "$VMUX_PANEL_ID" ]] || return 0
+
+    local watch_pwd="$PWD"
+    local watch_head_path
+    watch_head_path="$(_vmux_git_resolve_head_path 2>/dev/null || true)"
+    [[ -n "$watch_head_path" ]] || return 0
+
+    local watch_head_signature
+    watch_head_signature="$(_vmux_git_head_signature "$watch_head_path" 2>/dev/null || true)"
+
+    _VMUX_GIT_HEAD_LAST_PWD="$watch_pwd"
+    _VMUX_GIT_HEAD_PATH="$watch_head_path"
+    _VMUX_GIT_HEAD_SIGNATURE="$watch_head_signature"
+
+    _vmux_stop_git_head_watch
+    {
+        local last_signature="$watch_head_signature"
+        while true; do
+            sleep 1
+
+            local signature
+            signature="$(_vmux_git_head_signature "$watch_head_path" 2>/dev/null || true)"
+            if [[ -n "$signature" && "$signature" != "$last_signature" ]]; then
+                last_signature="$signature"
+                _vmux_report_git_branch_for_path "$watch_pwd"
+            fi
+        done
+    } >/dev/null 2>&1 &!
+    _VMUX_GIT_HEAD_WATCH_PID=$!
+}
+
+_vmux_preexec() {
+    if [[ -z "$_VMUX_TTY_NAME" ]]; then
+        local t
+        t="$(tty 2>/dev/null || true)"
+        t="${t##*/}"
+        [[ -n "$t" && "$t" != "not a tty" ]] && _VMUX_TTY_NAME="$t"
+    fi
+
+    _VMUX_CMD_START=$EPOCHSECONDS
+    _vmux_report_shell_activity_state running
+
+    # Heuristic: commands that may change git branch/dirty state without changing $PWD.
+    local cmd="${1## }"
+    case "$cmd" in
+        git\ *|git|gh\ *|lazygit|lazygit\ *|tig|tig\ *|gitui|gitui\ *|stg\ *|jj\ *)
+            _VMUX_GIT_FORCE=1
+            _VMUX_PR_FORCE=1 ;;
+    esac
+
+    # Register TTY + kick batched port scan for foreground commands (servers).
+    _vmux_report_tty_once
+    _vmux_ports_kick
+    _vmux_stop_pr_poll_loop
+    _vmux_start_git_head_watch
+}
+
+_vmux_precmd() {
+    _vmux_stop_git_head_watch
+
+    # Skip if socket doesn't exist yet
+    [[ -S "$VMUX_SOCKET_PATH" ]] || return 0
+    [[ -n "$VMUX_TAB_ID" ]] || return 0
+    [[ -n "$VMUX_PANEL_ID" ]] || return 0
+    _vmux_report_shell_activity_state prompt
+
+    if [[ -z "$_VMUX_TTY_NAME" ]]; then
+        local t
+        t="$(tty 2>/dev/null || true)"
+        t="${t##*/}"
+        [[ -n "$t" && "$t" != "not a tty" ]] && _VMUX_TTY_NAME="$t"
+    fi
+
+    _vmux_report_tty_once
+
+    local now=$EPOCHSECONDS
+    local pwd="$PWD"
+    local cmd_start="$_VMUX_CMD_START"
+    _VMUX_CMD_START=0
+
+    # Post-wake socket writes can occasionally leave a probe process wedged.
+    # If one probe is stale, clear the guard so fresh async probes can resume.
+    if [[ -n "$_VMUX_GIT_JOB_PID" ]]; then
+        if ! kill -0 "$_VMUX_GIT_JOB_PID" 2>/dev/null; then
+            _VMUX_GIT_JOB_PID=""
+            _VMUX_GIT_JOB_STARTED_AT=0
+        elif (( _VMUX_GIT_JOB_STARTED_AT > 0 )) && (( now - _VMUX_GIT_JOB_STARTED_AT >= _VMUX_ASYNC_JOB_TIMEOUT )); then
+            _VMUX_GIT_JOB_PID=""
+            _VMUX_GIT_JOB_STARTED_AT=0
+            _VMUX_GIT_FORCE=1
+        fi
+    fi
+
+    # CWD: keep the app in sync with the actual shell directory.
+    # This is also the simplest way to test sidebar directory behavior end-to-end.
+    if [[ "$pwd" != "$_VMUX_PWD_LAST_PWD" ]]; then
+        _VMUX_PWD_LAST_PWD="$pwd"
+        {
+            # Quote to preserve spaces.
+            local qpwd="${pwd//\"/\\\"}"
+            _vmux_send "report_pwd \"${qpwd}\" --tab=$VMUX_TAB_ID --panel=$VMUX_PANEL_ID"
+        } >/dev/null 2>&1 &!
+    fi
+
+    # Git branch/dirty: update immediately on directory change, otherwise every ~3s.
+    # While a foreground command is running, _vmux_start_git_head_watch probes HEAD
+    # once per second so agent-initiated git checkouts still surface quickly.
+    local should_git=0
+    local git_head_changed=0
+
+    # Git branch can change without a `git ...`-prefixed command (aliases like `gco`,
+    # tools like `gh pr checkout`, etc.). Detect HEAD changes and force a refresh.
+    if [[ "$pwd" != "$_VMUX_GIT_HEAD_LAST_PWD" ]]; then
+        _VMUX_GIT_HEAD_LAST_PWD="$pwd"
+        _VMUX_GIT_HEAD_PATH="$(_vmux_git_resolve_head_path 2>/dev/null || true)"
+        _VMUX_GIT_HEAD_SIGNATURE=""
+    fi
+    if [[ -n "$_VMUX_GIT_HEAD_PATH" ]]; then
+        local head_signature
+        head_signature="$(_vmux_git_head_signature "$_VMUX_GIT_HEAD_PATH" 2>/dev/null || true)"
+        if [[ -n "$head_signature" && "$head_signature" != "$_VMUX_GIT_HEAD_SIGNATURE" ]]; then
+            _VMUX_GIT_HEAD_SIGNATURE="$head_signature"
+            git_head_changed=1
+            # Treat HEAD file change like a git command — force-replace any
+            # running probe so the sidebar picks up the new branch immediately.
+            _VMUX_GIT_FORCE=1
+            _VMUX_PR_FORCE=1
+            should_git=1
+        fi
+    fi
+
+    if [[ "$pwd" != "$_VMUX_GIT_LAST_PWD" ]]; then
+        should_git=1
+    elif (( _VMUX_GIT_FORCE )); then
+        should_git=1
+    elif (( now - _VMUX_GIT_LAST_RUN >= 3 )); then
+        should_git=1
+    fi
+
+    if (( should_git )); then
+        local can_launch_git=1
+        if [[ -n "$_VMUX_GIT_JOB_PID" ]] && kill -0 "$_VMUX_GIT_JOB_PID" 2>/dev/null; then
+            # If a stale probe is still running but the cwd changed (or we just ran
+            # a git command), restart immediately so branch state isn't delayed
+            # until the next user command/prompt.
+            # Note: this repeats the cwd check above on purpose. The first check
+            # decides whether we should refresh at all; this one decides whether
+            # an in-flight older probe can be reused vs. replaced.
+            if [[ "$pwd" != "$_VMUX_GIT_LAST_PWD" ]] || (( _VMUX_GIT_FORCE )); then
+                kill "$_VMUX_GIT_JOB_PID" >/dev/null 2>&1 || true
+                _VMUX_GIT_JOB_PID=""
+                _VMUX_GIT_JOB_STARTED_AT=0
+            else
+                can_launch_git=0
+            fi
+        fi
+
+        if (( can_launch_git )); then
+            _VMUX_GIT_FORCE=0
+            _VMUX_GIT_LAST_PWD="$pwd"
+            _VMUX_GIT_LAST_RUN=$now
+            {
+                _vmux_report_git_branch_for_path "$pwd"
+            } >/dev/null 2>&1 &!
+            _VMUX_GIT_JOB_PID=$!
+            _VMUX_GIT_JOB_STARTED_AT=$now
+        fi
+    fi
+
+    # Pull request metadata is remote state. Keep a lightweight background poll
+    # alive while the shell is idle so gh-created PRs and merge status changes
+    # appear even without another prompt.
+    local should_restart_pr_poll=0
+    local pr_context_changed=0
+    if [[ -n "$_VMUX_PR_POLL_PWD" && "$pwd" != "$_VMUX_PR_POLL_PWD" ]]; then
+        pr_context_changed=1
+    elif (( git_head_changed )); then
+        pr_context_changed=1
+    fi
+    if [[ "$pwd" != "$_VMUX_PR_POLL_PWD" ]]; then
+        should_restart_pr_poll=1
+    elif (( _VMUX_PR_FORCE )); then
+        should_restart_pr_poll=1
+    elif [[ -z "$_VMUX_PR_POLL_PID" ]] || ! kill -0 "$_VMUX_PR_POLL_PID" 2>/dev/null; then
+        should_restart_pr_poll=1
+    fi
+
+    if (( should_restart_pr_poll )); then
+        _VMUX_PR_FORCE=0
+        if (( pr_context_changed )); then
+            _vmux_clear_pr_for_panel
+        fi
+        _vmux_start_pr_poll_loop "$pwd" 1
+    fi
+
+    # Ports: lightweight kick to the app's batched scanner.
+    # - Periodic scan to avoid stale values.
+    # - Forced scan when a long-running command returns to the prompt (common when stopping a server).
+    local cmd_dur=0
+    if [[ -n "$cmd_start" && "$cmd_start" != 0 ]]; then
+        cmd_dur=$(( now - cmd_start ))
+    fi
+
+    if (( cmd_dur >= 2 || now - _VMUX_PORTS_LAST_RUN >= 10 )); then
+        _vmux_ports_kick
+    fi
+}
+
+# Ensure Resources/bin is at the front of PATH, and remove the app's
+# Contents/MacOS entry so the GUI vmux binary cannot shadow the CLI vmux.
+# Shell init (.zprofile/.zshrc) may prepend other dirs after launch.
+# We fix this once on first prompt (after all init files have run).
+_vmux_fix_path() {
+    if [[ -n "${GHOSTTY_BIN_DIR:-}" ]]; then
+        local gui_dir="${GHOSTTY_BIN_DIR%/}"
+        local bin_dir="${gui_dir%/MacOS}/Resources/bin"
+        if [[ -d "$bin_dir" ]]; then
+            # Remove existing entries and re-prepend the CLI bin dir.
+            local -a parts=("${(@s/:/)PATH}")
+            parts=("${(@)parts:#$bin_dir}")
+            parts=("${(@)parts:#$gui_dir}")
+            PATH="${bin_dir}:${(j/:/)parts}"
+        fi
+    fi
+    add-zsh-hook -d precmd _vmux_fix_path
+}
+
+_vmux_zshexit() {
+    _vmux_stop_git_head_watch
+    _vmux_stop_pr_poll_loop
+}
+
+autoload -Uz add-zsh-hook
+add-zsh-hook preexec _vmux_preexec
+add-zsh-hook precmd _vmux_precmd
+add-zsh-hook precmd _vmux_fix_path
+add-zsh-hook zshexit _vmux_zshexit

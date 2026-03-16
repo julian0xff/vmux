@@ -39,9 +39,10 @@ export default function PrivacyPolicyPage() {
       <p>
         We collect &ldquo;Non-Personal Information&rdquo; and &ldquo;Personal
         Information.&rdquo; Non-Personal Information includes information that
-        cannot be used to personally identify you, such as anonymous usage data,
-        platform types, and crash diagnostics. Personal Information includes
-        your email address if you choose to contact us.
+        cannot be used to personally identify you, such as your operating
+        system version and application version when checking for updates.
+        Personal Information includes your email address if you choose to
+        contact us.
       </p>
 
       <h3>1. Information collected via Technology</h3>
@@ -49,9 +50,7 @@ export default function PrivacyPolicyPage() {
         The Application may collect the following information automatically:
       </p>
       <ul>
-        <li>Crash reports and error diagnostics (via Sentry)</li>
-        <li>Operating system version and application version</li>
-        <li>Anonymous usage patterns</li>
+        <li>Operating system version and application version for update checks</li>
       </ul>
       <p>
         The Application checks for updates via Sparkle, which may transmit your
@@ -78,11 +77,6 @@ export default function PrivacyPolicyPage() {
       </p>
       <ul>
         <li>
-          <strong>Sentry</strong> &mdash; error tracking and crash reporting.
-          May collect error logs, stack traces, device information, and OS
-          version.
-        </li>
-        <li>
           <strong>Sparkle</strong> &mdash; auto-update framework. Transmits
           application and OS version to check for updates.
         </li>
@@ -99,10 +93,9 @@ export default function PrivacyPolicyPage() {
       <h2>III. How We Use and Share Information</h2>
       <p>
         We do not sell, trade, rent or otherwise share your Personal Information
-        with third parties for marketing purposes. We use crash reports and
-        diagnostics solely to improve the Application. We may share information
-        if we have a good-faith belief that disclosure is necessary to meet
-        legal process or protect against harm.
+        with third parties for marketing purposes. We may share information if
+        we have a good-faith belief that disclosure is necessary to meet legal
+        process or protect against harm.
       </p>
 
       <h2>IV. How We Protect Information</h2>
@@ -153,9 +146,9 @@ export default function PrivacyPolicyPage() {
 
       <h2>IX. Data Retention</h2>
       <p>
-        Crash reports and diagnostics are retained only as long as needed to
-        diagnose and fix issues. You may request deletion of any data associated
-        with you by contacting us at{" "}
+        We retain personal information you voluntarily provide only as long as
+        needed to respond to your request or comply with legal obligations. You
+        may request deletion of any data associated with you by contacting us at{" "}
         <a href="mailto:founders@manaflow.com">founders@manaflow.com</a>.
       </p>
     </>

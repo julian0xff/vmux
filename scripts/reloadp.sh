@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-xcodebuild -project GhosttyTabs.xcodeproj -scheme cmux -configuration Release -destination 'platform=macOS' build
+xcodebuild -project GhosttyTabs.xcodeproj -scheme vmux -configuration Release -destination 'platform=macOS' build
 pkill -x vmux || true
 sleep 0.2
 APP_PATH="$(
@@ -16,5 +16,5 @@ if [[ -z "${APP_PATH}" ]]; then
   exit 1
 fi
 # Dev shells (including CI/Codex) often force-disable paging by exporting these.
-# Don't leak that into cmux, otherwise `git diff` won't page even with PAGER=less.
+# Don't leak that into vmux, otherwise `git diff` won't page even with PAGER=less.
 env -u GIT_PAGER -u GH_PAGER open -g "$APP_PATH"

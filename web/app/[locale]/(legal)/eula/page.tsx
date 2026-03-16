@@ -117,10 +117,10 @@ export default function EulaPage() {
       <h2>Third-Party Services</h2>
       <p>
         The Application integrates with third-party services including Ghostty
-        (terminal rendering engine), Sentry (error tracking), and Sparkle
-        (auto-update framework). You acknowledge that the Company shall not be
-        responsible for any third-party services, including their accuracy,
-        completeness, or quality.
+        (terminal rendering engine) and Sparkle (auto-update framework). You
+        acknowledge that the Company shall not be responsible for any
+        third-party services, including their accuracy, completeness, or
+        quality.
       </p>
 
       <h2>Term and Termination</h2>

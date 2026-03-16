@@ -12,10 +12,10 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from cmux import cmux, cmuxError
+from vmux import vmux, vmuxError
 
 
-SOCKET_PATH = os.environ.get("CMUX_SOCKET", "/tmp/cmux-debug.sock")
+SOCKET_PATH = os.environ.get("VMUX_SOCKET", "/tmp/vmux-debug.sock")
 
 
 def _wait_until(predicate, timeout_s=4.0, interval_s=0.04, message="timeout"):
@@ -24,7 +24,7 @@ def _wait_until(predicate, timeout_s=4.0, interval_s=0.04, message="timeout"):
         if predicate():
             return
         time.sleep(interval_s)
-    raise cmuxError(message)
+    raise vmuxError(message)
 
 
 def _palette_visible(client, window_id):
@@ -79,7 +79,7 @@ def _open_palette(client, window_id):
 
 
 def main():
-    with cmux(SOCKET_PATH) as client:
+    with vmux(SOCKET_PATH) as client:
         client.activate_app()
         time.sleep(0.2)
 

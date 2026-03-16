@@ -47,7 +47,7 @@ class TerminalController {
     private nonisolated let listenerStateLock = NSLock()
     private var clientHandlers: [Int32: Thread] = [:]
     private var tabManager: TabManager?
-    private var accessMode: SocketControlMode = .cmuxOnly
+    private var accessMode: SocketControlMode = .vmuxOnly
     private let myPid = getpid()
     private nonisolated(unsafe) static var socketCommandPolicyDepth: Int = 0
     private nonisolated(unsafe) static var socketCommandFocusAllowanceStack: [Bool] = []
@@ -150,8 +150,8 @@ class TerminalController {
 
     private final class V2BrowserUndefinedSentinel {}
 
-    private static let v2BrowserEvalEnvelopeTypeKey = "__cmux_t"
-    private static let v2BrowserEvalEnvelopeValueKey = "__cmux_v"
+    private static let v2BrowserEvalEnvelopeTypeKey = "__vmux_t"
+    private static let v2BrowserEvalEnvelopeValueKey = "__vmux_v"
     private static let v2BrowserEvalEnvelopeTypeUndefined = "undefined"
     private static let v2BrowserEvalEnvelopeTypeValue = "value"
 
@@ -334,7 +334,7 @@ class TerminalController {
     }
 
     private final class SocketFastPathState: @unchecked Sendable {
-        private let queue = DispatchQueue(label: "com.cmux.socket-fast-path")
+        private let queue = DispatchQueue(label: "com.vmux.socket-fast-path")
         private var lastReportedDirectories: [SocketSurfaceKey: String] = [:]
         private var lastReportedShellStates: [SocketSurfaceKey: Workspace.PanelShellActivityState] = [:]
         private let maxTrackedDirectories = 4096
@@ -1203,15 +1203,15 @@ class TerminalController {
     private func handleClient(_ socket: Int32, peerPid: pid_t? = nil) {
         defer { close(socket) }
 
-        // In cmuxOnly mode, verify the connecting process is a descendant of cmux.
+        // In vmuxOnly mode, verify the connecting process is a descendant of vmux.
         // Other modes allow external clients and apply separate auth controls.
-        if accessMode == .cmuxOnly {
+        if accessMode == .vmuxOnly {
             // Use pre-captured peer PID if available (captured in accept loop before
             // the peer can disconnect), falling back to live lookup.
             let pid = peerPid ?? getPeerPid(socket)
             if let pid {
                 guard isDescendant(pid) else {
-                    let msg = "ERROR: Access denied — only processes started inside cmux can connect\n"
+                    let msg = "ERROR: Access denied — only processes started inside vmux can connect\n"
                     msg.withCString { ptr in _ = write(socket, ptr, strlen(ptr)) }
                     return
                 }
@@ -2252,7 +2252,7 @@ class TerminalController {
 #endif
 
         return [
-            "protocol": "cmux-socket",
+            "protocol": "vmux-socket",
             "version": 2,
             "socket_path": socketPath,
             "access_mode": accessMode.rawValue,
@@ -5724,16 +5724,16 @@ class TerminalController {
         if let frameSelector = v2BrowserCurrentFrameSelector(surfaceId: surfaceId) {
             let selectorLiteral = v2JSONLiteral(frameSelector)
             framePrelude = """
-            let __cmuxDoc = document;
+            let __vmuxDoc = document;
             try {
-              const __cmuxFrame = document.querySelector(\(selectorLiteral));
-              if (__cmuxFrame && __cmuxFrame.contentDocument) {
-                __cmuxDoc = __cmuxFrame.contentDocument;
+              const __vmuxFrame = document.querySelector(\(selectorLiteral));
+              if (__vmuxFrame && __vmuxFrame.contentDocument) {
+                __vmuxDoc = __vmuxFrame.contentDocument;
               }
             } catch (_) {}
             """
         } else {
-            framePrelude = "const __cmuxDoc = document;"
+            framePrelude = "const __vmuxDoc = document;"
         }
 
         let executionBlock: String
@@ -5746,24 +5746,24 @@ class TerminalController {
         let asyncFunctionBody = """
         \(framePrelude)
 
-        const __cmuxMaybeAwait = async (__r) => {
+        const __vmuxMaybeAwait = async (__r) => {
           if (__r !== null && (typeof __r === 'object' || typeof __r === 'function') && typeof __r.then === 'function') {
             return await __r;
           }
           return __r;
         };
 
-        const __cmuxEvalInFrame = async function() {
-          const document = __cmuxDoc;
+        const __vmuxEvalInFrame = async function() {
+          const document = __vmuxDoc;
           \(executionBlock)
-          const __value = await __cmuxMaybeAwait(__r);
+          const __value = await __vmuxMaybeAwait(__r);
           return {
-            __cmux_t: (typeof __value === 'undefined') ? 'undefined' : 'value',
-            __cmux_v: __value
+            __vmux_t: (typeof __value === 'undefined') ? 'undefined' : 'value',
+            __vmux_v: __value
           };
         };
 
-        return await __cmuxEvalInFrame();
+        return await __vmuxEvalInFrame();
         """
 
         var rawResult: V2JavaScriptResult
@@ -5874,7 +5874,7 @@ class TerminalController {
 
         let injector = """
         (() => {
-          window.__cmuxInitScriptsApplied = window.__cmuxInitScriptsApplied || { scripts: [], styles: [] };
+          window.__vmuxInitScriptsApplied = window.__vmuxInitScriptsApplied || { scripts: [], styles: [] };
           return true;
         })()
         """
@@ -5887,7 +5887,7 @@ class TerminalController {
             let cssLiteral = v2JSONLiteral(css)
             let styleScript = """
             (() => {
-              const id = 'cmux-init-style-' + btoa(unescape(encodeURIComponent(\(cssLiteral)))).replace(/=+$/g, '');
+              const id = 'vmux-init-style-' + btoa(unescape(encodeURIComponent(\(cssLiteral)))).replace(/=+$/g, '');
               if (document.getElementById(id)) return true;
               const el = document.createElement('style');
               el.id = id;
@@ -7178,7 +7178,7 @@ class TerminalController {
 
             // Best effort: keep screenshot data available even when temp-file writes fail.
             let screenshotsDirectory = FileManager.default.temporaryDirectory
-                .appendingPathComponent("cmux-browser-screenshots", isDirectory: true)
+                .appendingPathComponent("vmux-browser-screenshots", isDirectory: true)
             if (try? FileManager.default.createDirectory(at: screenshotsDirectory, withIntermediateDirectories: true)) != nil {
                 bestEffortPruneTemporaryFiles(in: screenshotsDirectory)
                 let timestampMs = Int(Date().timeIntervalSince1970 * 1000)
@@ -7503,7 +7503,7 @@ class TerminalController {
         return v2BrowserWithPanel(params: params) { _, ws, surfaceId, browserPanel in
             let script = """
             (() => {
-              const __cmuxCssPath = (el) => {
+              const __vmuxCssPath = (el) => {
                 if (!el || el.nodeType !== 1) return null;
                 if (el.id) return '#' + CSS.escape(el.id);
                 const parts = [];
@@ -7528,17 +7528,17 @@ class TerminalController {
                 return parts.join(' > ');
               };
 
-              const __cmuxFound = (() => {
+              const __vmuxFound = (() => {
             \(finderBody)
               })();
-              if (!__cmuxFound) return { ok: false, error: 'not_found' };
-              const selector = __cmuxCssPath(__cmuxFound);
+              if (!__vmuxFound) return { ok: false, error: 'not_found' };
+              const selector = __vmuxCssPath(__vmuxFound);
               if (!selector) return { ok: false, error: 'not_found' };
               return {
                 ok: true,
                 selector,
-                tag: String(__cmuxFound.tagName || '').toLowerCase(),
-                text: String(__cmuxFound.textContent || '').trim()
+                tag: String(__vmuxFound.tagName || '').toLowerCase(),
+                text: String(__vmuxFound.textContent || '').trim()
               };
             })()
             """
@@ -8045,19 +8045,19 @@ class TerminalController {
             let textLiteral = text.map(v2JSONLiteral) ?? "null"
             let script = """
             (() => {
-              const q = window.__cmuxDialogQueue || [];
+              const q = window.__vmuxDialogQueue || [];
               if (!q.length) return { ok: false, error: 'not_found' };
               const entry = q.shift();
               if (entry.type === 'confirm') {
-                window.__cmuxDialogDefaults = window.__cmuxDialogDefaults || { confirm: false, prompt: null };
-                window.__cmuxDialogDefaults.confirm = \(acceptLiteral);
+                window.__vmuxDialogDefaults = window.__vmuxDialogDefaults || { confirm: false, prompt: null };
+                window.__vmuxDialogDefaults.confirm = \(acceptLiteral);
               }
               if (entry.type === 'prompt') {
-                window.__cmuxDialogDefaults = window.__cmuxDialogDefaults || { confirm: false, prompt: null };
+                window.__vmuxDialogDefaults = window.__vmuxDialogDefaults || { confirm: false, prompt: null };
                 if (\(acceptLiteral)) {
-                  window.__cmuxDialogDefaults.prompt = \(textLiteral);
+                  window.__vmuxDialogDefaults.prompt = \(textLiteral);
                 } else {
-                  window.__cmuxDialogDefaults.prompt = null;
+                  window.__vmuxDialogDefaults.prompt = null;
                 }
               }
               return { ok: true, dialog: entry, remaining: q.length };
@@ -8652,9 +8652,9 @@ class TerminalController {
             let clearLiteral = clear ? "true" : "false"
             let script = """
             (() => {
-              const items = Array.isArray(window.__cmuxConsoleLog) ? window.__cmuxConsoleLog.slice() : [];
+              const items = Array.isArray(window.__vmuxConsoleLog) ? window.__vmuxConsoleLog.slice() : [];
               if (\(clearLiteral)) {
-                window.__cmuxConsoleLog = [];
+                window.__vmuxConsoleLog = [];
               }
               return { ok: true, items };
             })()
@@ -8690,9 +8690,9 @@ class TerminalController {
             let clearLiteral = clear ? "true" : "false"
             let script = """
             (() => {
-              const items = Array.isArray(window.__cmuxErrorLog) ? window.__cmuxErrorLog.slice() : [];
+              const items = Array.isArray(window.__vmuxErrorLog) ? window.__vmuxErrorLog.slice() : [];
               if (\(clearLiteral)) {
-                window.__cmuxErrorLog = [];
+                window.__vmuxErrorLog = [];
               }
               return { ok: true, items };
             })()
@@ -9906,7 +9906,7 @@ class TerminalController {
             NSApp.unhide(nil)
             let hasMainTerminalWindow = NSApp.windows.contains { window in
                 guard let raw = window.identifier?.rawValue else { return false }
-                return raw == "cmux.main" || raw.hasPrefix("cmux.main.")
+                return raw == "vmux.main" || raw.hasPrefix("vmux.main.")
             }
 
             if !hasMainTerminalWindow {
@@ -9917,7 +9917,7 @@ class TerminalController {
                 ?? NSApp.keyWindow
                 ?? NSApp.windows.first(where: { win in
                     guard let raw = win.identifier?.rawValue else { return false }
-                    return raw == "cmux.main" || raw.hasPrefix("cmux.main.")
+                    return raw == "vmux.main" || raw.hasPrefix("vmux.main.")
                 })
                 ?? NSApp.windows.first {
                 window.makeKeyAndOrderFront(nil)
@@ -10247,7 +10247,7 @@ class TerminalController {
         case "tabtransfer", "tab-transfer", "com.splittabbar.tabtransfer":
             return DragOverlayRoutingPolicy.bonsplitTabTransferType
         case "sidebarreorder", "sidebar-reorder", "sidebar_tab_reorder",
-            "com.cmux.sidebar-tab-reorder":
+            "com.vmux.sidebar-tab-reorder":
             return DragOverlayRoutingPolicy.sidebarTabReorderType
         default:
             // Allow explicit UTI strings for ad-hoc debug probes.
@@ -10274,7 +10274,7 @@ class TerminalController {
                 ?? NSApp.keyWindow
                 ?? NSApp.windows.first(where: { win in
                     guard let raw = win.identifier?.rawValue else { return false }
-                    return raw == "cmux.main" || raw.hasPrefix("cmux.main.")
+                    return raw == "vmux.main" || raw.hasPrefix("vmux.main.")
                 }),
                   let contentView = window.contentView,
                   let themeFrame = contentView.superview else { return }
@@ -10315,7 +10315,7 @@ class TerminalController {
                 ?? NSApp.keyWindow
                 ?? NSApp.windows.first(where: { win in
                     guard let raw = win.identifier?.rawValue else { return false }
-                    return raw == "cmux.main" || raw.hasPrefix("cmux.main.")
+                    return raw == "vmux.main" || raw.hasPrefix("vmux.main.")
                 }),
                   let contentView = window.contentView,
                   let themeFrame = contentView.superview else { return }
@@ -11244,7 +11244,7 @@ class TerminalController {
         let snapshotId = "\(timestamp)_\(shortId)"
 
         let outputDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("cmux-screenshots")
+            .appendingPathComponent("vmux-screenshots")
         try? FileManager.default.createDirectory(at: outputDir, withIntermediateDirectories: true)
         let filename = label.isEmpty ? "\(snapshotId).png" : "\(label)_\(snapshotId).png"
         let outputPath = outputDir.appendingPathComponent(filename)
@@ -11560,7 +11560,7 @@ class TerminalController {
 
         // Determine output path
         let outputDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("cmux-screenshots")
+            .appendingPathComponent("vmux-screenshots")
         try? FileManager.default.createDirectory(at: outputDir, withIntermediateDirectories: true)
 
         let filename = label.isEmpty ? "\(screenshotId).png" : "\(label)_\(screenshotId).png"

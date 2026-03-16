@@ -6,7 +6,7 @@ import Security
 
 enum SocketControlMode: String, CaseIterable, Identifiable {
     case off
-    case cmuxOnly
+    case vmuxOnly
     case automation
     case password
     /// Full open access (all local users/processes) with no ancestry or password gate.
@@ -14,14 +14,14 @@ enum SocketControlMode: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    static var uiCases: [SocketControlMode] { [.off, .cmuxOnly, .automation, .password, .allowAll] }
+    static var uiCases: [SocketControlMode] { [.off, .vmuxOnly, .automation, .password, .allowAll] }
 
     var displayName: String {
         switch self {
         case .off:
             return String(localized: "socketControl.off.name", defaultValue: "Off")
-        case .cmuxOnly:
-            return String(localized: "socketControl.cmuxOnly.name", defaultValue: "cmux processes only")
+        case .vmuxOnly:
+            return String(localized: "socketControl.vmuxOnly.name", defaultValue: "vmux processes only")
         case .automation:
             return String(localized: "socketControl.automation.name", defaultValue: "Automation mode")
         case .password:
@@ -35,8 +35,8 @@ enum SocketControlMode: String, CaseIterable, Identifiable {
         switch self {
         case .off:
             return String(localized: "socketControl.off.description", defaultValue: "Disable the local control socket.")
-        case .cmuxOnly:
-            return String(localized: "socketControl.cmuxOnly.description", defaultValue: "Only processes started inside vmux terminals can send commands.")
+        case .vmuxOnly:
+            return String(localized: "socketControl.vmuxOnly.description", defaultValue: "Only processes started inside vmux terminals can send commands.")
         case .automation:
             return String(localized: "socketControl.automation.description", defaultValue: "Allow external local automation clients from this macOS user (no ancestry check).")
         case .password:
@@ -50,7 +50,7 @@ enum SocketControlMode: String, CaseIterable, Identifiable {
         switch self {
         case .allowAll:
             return 0o666
-        case .off, .cmuxOnly, .automation, .password:
+        case .off, .vmuxOnly, .automation, .password:
             return 0o600
         }
     }
@@ -289,9 +289,9 @@ enum SocketControlPasswordStore {
 struct SocketControlSettings {
     static let appStorageKey = "socketControlMode"
     static let legacyEnabledKey = "socketControlEnabled"
-    static let allowSocketPathOverrideKey = "CMUX_ALLOW_SOCKET_OVERRIDE"
-    static let socketPasswordEnvKey = "CMUX_SOCKET_PASSWORD"
-    static let launchTagEnvKey = "CMUX_TAG"
+    static let allowSocketPathOverrideKey = "VMUX_ALLOW_SOCKET_OVERRIDE"
+    static let socketPasswordEnvKey = "VMUX_SOCKET_PASSWORD"
+    static let launchTagEnvKey = "VMUX_TAG"
     static let baseDebugBundleIdentifier = "com.vmuxterm.app.debug"
     private static let socketDirectoryName = "vmux"
     private static let stableSocketFileName = "vmux.sock"
@@ -326,8 +326,8 @@ struct SocketControlSettings {
         switch normalizeMode(raw) {
         case "off":
             return .off
-        case "cmuxonly":
-            return .cmuxOnly
+        case "vmuxonly":
+            return .vmuxOnly
         case "automation":
             return .automation
         case "password":
@@ -350,7 +350,7 @@ struct SocketControlSettings {
     }
 
     static var defaultMode: SocketControlMode {
-        return .cmuxOnly
+        return .vmuxOnly
     }
 
     private static var isDebugBuild: Bool {
@@ -379,8 +379,8 @@ struct SocketControlSettings {
             return false
         }
         // XCUITest launches the app as a separate process without XCTest env vars,
-        // so isRunningUnderXCTest() misses it. Check for any CMUX_UI_TEST_ env var.
-        if environment.keys.contains(where: { $0.hasPrefix("CMUX_UI_TEST_") }) {
+        // so isRunningUnderXCTest() misses it. Check for any VMUX_UI_TEST_ env var.
+        if environment.keys.contains(where: { $0.hasPrefix("VMUX_UI_TEST_") }) {
             return false
         }
 
@@ -434,7 +434,7 @@ struct SocketControlSettings {
             probeStableDefaultPathEntry: probeStableDefaultPathEntry
         )
 
-        guard let override = environment["CMUX_SOCKET_PATH"], !override.isEmpty else {
+        guard let override = environment["VMUX_SOCKET_PATH"], !override.isEmpty else {
             return fallback
         }
 
@@ -582,7 +582,7 @@ struct SocketControlSettings {
     static func envOverrideEnabled(
         environment: [String: String] = ProcessInfo.processInfo.environment
     ) -> Bool? {
-        guard let raw = environment["CMUX_SOCKET_ENABLE"], !raw.isEmpty else {
+        guard let raw = environment["VMUX_SOCKET_ENABLE"], !raw.isEmpty else {
             return nil
         }
 
@@ -599,7 +599,7 @@ struct SocketControlSettings {
     static func envOverrideMode(
         environment: [String: String] = ProcessInfo.processInfo.environment
     ) -> SocketControlMode? {
-        guard let raw = environment["CMUX_SOCKET_MODE"], !raw.isEmpty else {
+        guard let raw = environment["VMUX_SOCKET_MODE"], !raw.isEmpty else {
             return nil
         }
         return parseMode(raw)
@@ -616,7 +616,7 @@ struct SocketControlSettings {
             if let overrideMode = envOverrideMode(environment: environment) {
                 return overrideMode
             }
-            return userMode == .off ? .cmuxOnly : userMode
+            return userMode == .off ? .vmuxOnly : userMode
         }
 
         if let overrideMode = envOverrideMode(environment: environment) {

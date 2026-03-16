@@ -7,7 +7,7 @@ struct GhosttyConfig {
         case dark
     }
 
-    private static let cmuxReleaseBundleIdentifier = "com.vmuxterm.app"
+    private static let vmuxReleaseBundleIdentifier = "com.vmuxterm.app"
     private static let loadCacheLock = NSLock()
     private static var cachedConfigsByColorScheme: [ColorSchemePreference: GhosttyConfig] = [:]
 
@@ -88,7 +88,7 @@ struct GhosttyConfig {
         loadCacheLock.unlock()
     }
 
-    private static func cmuxConfigPaths(
+    private static func vmuxConfigPaths(
         fileManager: FileManager = .default,
         currentBundleIdentifier: String? = Bundle.main.bundleIdentifier
     ) -> [String] {
@@ -116,11 +116,11 @@ struct GhosttyConfig {
             }
         }
 
-        let releasePaths = paths(for: cmuxReleaseBundleIdentifier)
+        let releasePaths = paths(for: vmuxReleaseBundleIdentifier)
         guard let currentBundleIdentifier, !currentBundleIdentifier.isEmpty else {
             return releasePaths
         }
-        if currentBundleIdentifier == cmuxReleaseBundleIdentifier {
+        if currentBundleIdentifier == vmuxReleaseBundleIdentifier {
             return releasePaths
         }
 
@@ -143,7 +143,7 @@ struct GhosttyConfig {
             "~/.config/ghostty/config.ghostty",
             "~/Library/Application Support/com.mitchellh.ghostty/config",
             "~/Library/Application Support/com.mitchellh.ghostty/config.ghostty",
-        ].map { NSString(string: $0).expandingTildeInPath } + cmuxConfigPaths()
+        ].map { NSString(string: $0).expandingTildeInPath } + vmuxConfigPaths()
 
         for path in configPaths {
             if let contents = readConfigFile(at: path) {

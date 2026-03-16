@@ -19,7 +19,7 @@ final class TemplateCreationWindowController: NSWindowController, NSWindowDelega
         window.titlebarAppearsTransparent = false
         window.isMovableByWindowBackground = true
         window.isReleasedWhenClosed = false
-        window.identifier = NSUserInterfaceItemIdentifier("cmux.templateCreation")
+        window.identifier = NSUserInterfaceItemIdentifier("vmux.templateCreation")
         window.minSize = NSSize(width: 480, height: 500)
         window.center()
 

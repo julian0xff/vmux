@@ -17,16 +17,19 @@ if ! command -v zig &> /dev/null; then
 fi
 
 GHOSTTY_SHA="$(git -C ghostty rev-parse HEAD)"
-CACHE_ROOT="${CMUX_GHOSTTYKIT_CACHE_DIR:-$HOME/.cache/cmux/ghosttykit}"
-CACHE_DIR="$CACHE_ROOT/$GHOSTTY_SHA"
+CACHE_ROOT="${VMUX_GHOSTTYKIT_CACHE_DIR:-$HOME/.cache/vmux/ghosttykit}"
+CACHE_VARIANT="nosentry"
+CACHE_DIR="$CACHE_ROOT/$GHOSTTY_SHA-$CACHE_VARIANT"
 CACHE_XCFRAMEWORK="$CACHE_DIR/GhosttyKit.xcframework"
 LOCAL_XCFRAMEWORK="$PROJECT_DIR/ghostty/macos/GhosttyKit.xcframework"
 LOCAL_SHA_STAMP="$LOCAL_XCFRAMEWORK/.ghostty_sha"
-LOCK_DIR="$CACHE_ROOT/$GHOSTTY_SHA.lock"
+LOCAL_VARIANT_STAMP="$LOCAL_XCFRAMEWORK/.vmux_variant"
+LOCK_DIR="$CACHE_ROOT/$GHOSTTY_SHA-$CACHE_VARIANT.lock"
 
 mkdir -p "$CACHE_ROOT"
 
 echo "==> Ghostty submodule commit: $GHOSTTY_SHA"
+echo "==> GhosttyKit variant: $CACHE_VARIANT"
 
 LOCK_TIMEOUT=300
 LOCK_START=$SECONDS
@@ -48,20 +51,25 @@ else
     # Without this check, a stale build from a previous commit could be cached under
     # the wrong SHA, producing ABI mismatches.
     LOCAL_SHA=""
+    LOCAL_VARIANT=""
     if [ -f "$LOCAL_SHA_STAMP" ]; then
         LOCAL_SHA="$(cat "$LOCAL_SHA_STAMP")"
     fi
+    if [ -f "$LOCAL_VARIANT_STAMP" ]; then
+        LOCAL_VARIANT="$(cat "$LOCAL_VARIANT_STAMP")"
+    fi
 
-    if [ -d "$LOCAL_XCFRAMEWORK" ] && [ "$LOCAL_SHA" = "$GHOSTTY_SHA" ]; then
+    if [ -d "$LOCAL_XCFRAMEWORK" ] && [ "$LOCAL_SHA" = "$GHOSTTY_SHA" ] && [ "$LOCAL_VARIANT" = "$CACHE_VARIANT" ]; then
         echo "==> Seeding cache from existing local GhosttyKit.xcframework (SHA matches)"
     else
         echo "==> Building GhosttyKit.xcframework (this may take a few minutes)..."
         (
             cd ghostty
-            zig build -Demit-xcframework=true -Dxcframework-target=universal -Doptimize=ReleaseFast
+            zig build -Demit-xcframework=true -Dxcframework-target=universal -Doptimize=ReleaseFast -Dsentry=false
         )
         # Stamp the build output with the SHA it was built from
         echo "$GHOSTTY_SHA" > "$LOCAL_SHA_STAMP"
+        echo "$CACHE_VARIANT" > "$LOCAL_VARIANT_STAMP"
     fi
 
     if [ ! -d "$LOCAL_XCFRAMEWORK" ]; then

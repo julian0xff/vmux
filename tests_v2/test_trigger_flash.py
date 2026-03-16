@@ -12,14 +12,14 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from cmux import cmux, cmuxError
+from vmux import vmux, vmuxError
 
 
-SOCKET_PATH = os.environ.get("CMUX_SOCKET", "/tmp/cmux-debug.sock")
+SOCKET_PATH = os.environ.get("VMUX_SOCKET", "/tmp/vmux-debug.sock")
 
 
 def main() -> int:
-    with cmux(SOCKET_PATH) as c:
+    with vmux(SOCKET_PATH) as c:
         sid = c.new_surface(panel_type="terminal")
         c.focus_surface(sid)
 
@@ -31,7 +31,7 @@ def main() -> int:
 
         after = c.flash_count(sid)
         if after <= base:
-            raise cmuxError(f"Expected flash count to increase (base={base}, after={after})")
+            raise vmuxError(f"Expected flash count to increase (base={base}, after={after})")
 
     print("PASS: surface.trigger_flash increments flash counter")
     return 0

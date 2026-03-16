@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regression test: CLI should auto-discover tagged debug sockets from CMUX_TAG."""
+"""Regression test: CLI should auto-discover tagged debug sockets from VMUX_TAG."""
 
 from __future__ import annotations
 
@@ -11,24 +11,24 @@ import subprocess
 import threading
 
 
-def resolve_cmux_cli() -> str:
-    explicit = os.environ.get("CMUX_CLI_BIN") or os.environ.get("CMUX_CLI")
+def resolve_vmux_cli() -> str:
+    explicit = os.environ.get("VMUX_CLI_BIN") or os.environ.get("VMUX_CLI")
     if explicit and os.path.exists(explicit) and os.access(explicit, os.X_OK):
         return explicit
 
     candidates: list[str] = []
-    candidates.extend(glob.glob(os.path.expanduser("~/Library/Developer/Xcode/DerivedData/*/Build/Products/Debug/cmux")))
-    candidates.extend(glob.glob("/tmp/cmux-*/Build/Products/Debug/cmux"))
+    candidates.extend(glob.glob(os.path.expanduser("~/Library/Developer/Xcode/DerivedData/*/Build/Products/Debug/vmux")))
+    candidates.extend(glob.glob("/tmp/vmux-*/Build/Products/Debug/vmux"))
     candidates = [p for p in candidates if os.path.exists(p) and os.access(p, os.X_OK)]
     if candidates:
         candidates.sort(key=os.path.getmtime, reverse=True)
         return candidates[0]
 
-    in_path = shutil.which("cmux")
+    in_path = shutil.which("vmux")
     if in_path:
         return in_path
 
-    raise RuntimeError("Unable to find cmux CLI binary. Set CMUX_CLI_BIN.")
+    raise RuntimeError("Unable to find vmux CLI binary. Set VMUX_CLI_BIN.")
 
 
 class PingServer:
@@ -83,13 +83,13 @@ class PingServer:
 
 def main() -> int:
     try:
-        cli_path = resolve_cmux_cli()
+        cli_path = resolve_vmux_cli()
     except Exception as exc:
         print(f"FAIL: {exc}")
         return 1
 
     tag = f"cli-autodiscover-{os.getpid()}"
-    socket_path = f"/tmp/cmux-debug-{tag}.sock"
+    socket_path = f"/tmp/vmux-debug-{tag}.sock"
     server = PingServer(socket_path)
     server.start()
 
@@ -102,10 +102,8 @@ def main() -> int:
         return 1
 
     env = os.environ.copy()
-    env["CMUX_SOCKET_PATH"] = "/tmp/cmux.sock"
-    env["CMUX_TAG"] = tag
-    env["CMUX_CLI_SENTRY_DISABLED"] = "1"
-    env["CMUX_CLAUDE_HOOK_SENTRY_DISABLED"] = "1"
+    env["VMUX_SOCKET_PATH"] = "/tmp/vmux.sock"
+    env["VMUX_TAG"] = tag
 
     try:
         proc = subprocess.run(
@@ -117,7 +115,7 @@ def main() -> int:
             check=False,
         )
     except Exception as exc:
-        print(f"FAIL: invoking cmux ping failed: {exc}")
+        print(f"FAIL: invoking vmux ping failed: {exc}")
         return 1
     finally:
         server.join(timeout=2.0)
@@ -131,18 +129,18 @@ def main() -> int:
         return 1
 
     if proc.returncode != 0:
-        print("FAIL: cmux ping returned non-zero status")
+        print("FAIL: vmux ping returned non-zero status")
         print(f"stdout={proc.stdout!r}")
         print(f"stderr={proc.stderr!r}")
         return 1
 
     if proc.stdout.strip() != "PONG":
-        print("FAIL: cmux ping did not use auto-discovered socket")
+        print("FAIL: vmux ping did not use auto-discovered socket")
         print(f"stdout={proc.stdout!r}")
         print(f"stderr={proc.stderr!r}")
         return 1
 
-    print("PASS: cmux ping auto-discovers tagged socket from CMUX_TAG")
+    print("PASS: vmux ping auto-discovers tagged socket from VMUX_TAG")
     return 0
 
 

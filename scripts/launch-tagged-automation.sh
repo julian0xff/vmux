@@ -104,11 +104,11 @@ fi
 
 TAG_ID="$(sanitize_bundle "$TAG")"
 TAG_SLUG="$(sanitize_path "$TAG")"
-APP="$HOME/Library/Developer/Xcode/DerivedData/cmux-${TAG_SLUG}/Build/Products/Debug/cmux DEV ${TAG}.app"
-BID="com.cmuxterm.app.debug.${TAG_ID}"
-SOCK="/tmp/cmux-debug-${TAG_SLUG}.sock"
-DSOCK="$HOME/Library/Application Support/cmux/cmuxd-dev-${TAG_SLUG}.sock"
-LOG="/tmp/cmux-debug-${TAG_SLUG}.log"
+APP="$HOME/Library/Developer/Xcode/DerivedData/vmux-${TAG_SLUG}/Build/Products/Debug/vmux DEV ${TAG}.app"
+BID="com.vmuxterm.app.debug.${TAG_ID}"
+SOCK="/tmp/vmux-debug-${TAG_SLUG}.sock"
+DSOCK="$HOME/Library/Application Support/vmux/vmuxd-dev-${TAG_SLUG}.sock"
+LOG="/tmp/vmux-debug-${TAG_SLUG}.log"
 
 if [[ ! -d "$APP" ]]; then
   echo "error: tagged app not found at $APP" >&2
@@ -117,28 +117,28 @@ fi
 
 /usr/bin/osascript -e "tell application id \"${BID}\" to quit" >/dev/null 2>&1 || true
 sleep 0.5
-pkill -f "cmux DEV ${TAG}.app/Contents/MacOS/cmux DEV" || true
+pkill -f "vmux DEV ${TAG}.app/Contents/MacOS/vmux DEV" || true
 rm -f "$SOCK" "$DSOCK"
 sleep 0.5
 
 OPEN_ENV=(
   env
-  -u CMUX_SOCKET_PATH
-  -u CMUX_SOCKET_MODE
-  -u CMUX_TAB_ID
-  -u CMUX_PANEL_ID
-  -u CMUX_SURFACE_ID
-  -u CMUX_WORKSPACE_ID
-  -u CMUXD_UNIX_PATH
-  -u CMUX_TAG
-  -u CMUX_PORT
-  -u CMUX_PORT_END
-  -u CMUX_PORT_RANGE
-  -u CMUX_DEBUG_LOG
-  -u CMUX_BUNDLE_ID
-  -u CMUX_SHELL_INTEGRATION
-  -u CMUX_SHELL_INTEGRATION_DIR
-  -u CMUX_LOAD_GHOSTTY_ZSH_INTEGRATION
+  -u VMUX_SOCKET_PATH
+  -u VMUX_SOCKET_MODE
+  -u VMUX_TAB_ID
+  -u VMUX_PANEL_ID
+  -u VMUX_SURFACE_ID
+  -u VMUX_WORKSPACE_ID
+  -u VMUXD_UNIX_PATH
+  -u VMUX_TAG
+  -u VMUX_PORT
+  -u VMUX_PORT_END
+  -u VMUX_PORT_RANGE
+  -u VMUX_DEBUG_LOG
+  -u VMUX_BUNDLE_ID
+  -u VMUX_SHELL_INTEGRATION
+  -u VMUX_SHELL_INTEGRATION_DIR
+  -u VMUX_LOAD_GHOSTTY_ZSH_INTEGRATION
   -u GHOSTTY_BIN_DIR
   -u GHOSTTY_RESOURCES_DIR
   -u GHOSTTY_SHELL_FEATURES
@@ -146,10 +146,10 @@ OPEN_ENV=(
   -u GH_PAGER
   -u TERMINFO
   -u XDG_DATA_DIRS
-  "CMUX_SOCKET_MODE=${MODE}"
-  "CMUX_SOCKET_PATH=${SOCK}"
-  "CMUXD_UNIX_PATH=${DSOCK}"
-  "CMUX_DEBUG_LOG=${LOG}"
+  "VMUX_SOCKET_MODE=${MODE}"
+  "VMUX_SOCKET_PATH=${SOCK}"
+  "VMUXD_UNIX_PATH=${DSOCK}"
+  "VMUX_DEBUG_LOG=${LOG}"
 )
 
 for kv in "${EXTRA_ENV[@]}"; do
@@ -174,7 +174,7 @@ fi
 echo "app: $APP"
 echo "bundle_id: $BID"
 echo "socket: $SOCK"
-echo "cmuxd_socket: $DSOCK"
+echo "vmuxd_socket: $DSOCK"
 echo "log: $LOG"
 echo "mode: $MODE"
 echo "socket_ready: $(if [[ -S "$SOCK" ]]; then echo yes; else echo no; fi)"

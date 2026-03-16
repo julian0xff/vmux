@@ -90,6 +90,7 @@ build_helper() {
     -Demit-macos-app=false
     -Demit-xcframework=false
     -Doptimize=ReleaseFast
+    -Dsentry=false
     --prefix
     "$prefix"
   )
@@ -104,7 +105,7 @@ build_helper() {
   )
 }
 
-TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/cmux-ghostty-helper.XXXXXX")"
+TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/vmux-ghostty-helper.XXXXXX")"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
 mkdir -p "$(dirname "$OUTPUT_PATH")"

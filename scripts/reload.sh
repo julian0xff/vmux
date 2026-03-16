@@ -2,22 +2,22 @@
 set -euo pipefail
 
 APP_NAME="vmux DEV"
-BUNDLE_ID="com.cmuxterm.app.debug"
+BUNDLE_ID="com.vmuxterm.app.debug"
 BASE_APP_NAME="vmux DEV"
 DERIVED_DATA=""
 NAME_SET=0
 BUNDLE_SET=0
 DERIVED_SET=0
 TAG=""
-CMUX_DEBUG_LOG=""
-LAST_SOCKET_PATH_DIR="$HOME/Library/Application Support/cmux"
+VMUX_DEBUG_LOG=""
+LAST_SOCKET_PATH_DIR="$HOME/Library/Application Support/vmux"
 LAST_SOCKET_PATH_FILE="${LAST_SOCKET_PATH_DIR}/last-socket-path"
 
 write_last_socket_path() {
   local socket_path="$1"
   mkdir -p "$LAST_SOCKET_PATH_DIR"
   echo "$socket_path" > "$LAST_SOCKET_PATH_FILE" || true
-  echo "$socket_path" > /tmp/cmux-last-socket-path || true
+  echo "$socket_path" > /tmp/vmux-last-socket-path || true
 }
 
 usage() {
@@ -56,7 +56,7 @@ sanitize_path() {
 
 tagged_derived_data_path() {
   local slug="$1"
-  echo "$HOME/Library/Developer/Xcode/DerivedData/cmux-${slug}"
+  echo "$HOME/Library/Developer/Xcode/DerivedData/vmux-${slug}"
 }
 
 print_tag_cleanup_reminder() {
@@ -67,10 +67,10 @@ print_tag_cleanup_reminder() {
   local -a stale_tags=()
 
   while IFS= read -r -d '' path; do
-    if [[ "$path" == /tmp/cmux-* ]]; then
-      tag="${path#/tmp/cmux-}"
-    elif [[ "$path" == "$HOME/Library/Developer/Xcode/DerivedData/cmux-"* ]]; then
-      tag="${path#$HOME/Library/Developer/Xcode/DerivedData/cmux-}"
+    if [[ "$path" == /tmp/vmux-* ]]; then
+      tag="${path#/tmp/vmux-}"
+    elif [[ "$path" == "$HOME/Library/Developer/Xcode/DerivedData/vmux-"* ]]; then
+      tag="${path#$HOME/Library/Developer/Xcode/DerivedData/vmux-}"
     else
       continue
     fi
@@ -87,8 +87,8 @@ print_tag_cleanup_reminder() {
     seen="${seen}${tag} "
     stale_tags+=("$tag")
   done < <(
-    find /tmp -maxdepth 1 -name 'cmux-*' -print0 2>/dev/null
-    find "$HOME/Library/Developer/Xcode/DerivedData" -maxdepth 1 -type d -name 'cmux-*' -print0 2>/dev/null
+    find /tmp -maxdepth 1 -name 'vmux-*' -print0 2>/dev/null
+    find "$HOME/Library/Developer/Xcode/DerivedData" -maxdepth 1 -type d -name 'vmux-*' -print0 2>/dev/null
   )
 
   echo
@@ -105,16 +105,16 @@ print_tag_cleanup_reminder() {
     echo "Cleanup stale tags only:"
     for tag in "${stale_tags[@]}"; do
       echo "  pkill -f \"vmux DEV ${tag}.app/Contents/MacOS/vmux DEV\""
-      echo "  rm -rf \"$(tagged_derived_data_path "$tag")\" \"/tmp/cmux-${tag}\" \"/tmp/cmux-debug-${tag}.sock\""
-      echo "  rm -f \"/tmp/cmux-debug-${tag}.log\""
-      echo "  rm -f \"$HOME/Library/Application Support/cmux/cmuxd-dev-${tag}.sock\""
+      echo "  rm -rf \"$(tagged_derived_data_path "$tag")\" \"/tmp/vmux-${tag}\" \"/tmp/vmux-debug-${tag}.sock\""
+      echo "  rm -f \"/tmp/vmux-debug-${tag}.log\""
+      echo "  rm -f \"$HOME/Library/Application Support/vmux/vmuxd-dev-${tag}.sock\""
     done
   fi
   echo "After you verify current tag, cleanup command:"
   echo "  pkill -f \"vmux DEV ${current_slug}.app/Contents/MacOS/vmux DEV\""
-  echo "  rm -rf \"$(tagged_derived_data_path "$current_slug")\" \"/tmp/cmux-${current_slug}\" \"/tmp/cmux-debug-${current_slug}.sock\""
-  echo "  rm -f \"/tmp/cmux-debug-${current_slug}.log\""
-  echo "  rm -f \"$HOME/Library/Application Support/cmux/cmuxd-dev-${current_slug}.sock\""
+  echo "  rm -rf \"$(tagged_derived_data_path "$current_slug")\" \"/tmp/vmux-${current_slug}\" \"/tmp/vmux-debug-${current_slug}.sock\""
+  echo "  rm -f \"/tmp/vmux-debug-${current_slug}.log\""
+  echo "  rm -f \"$HOME/Library/Application Support/vmux/vmuxd-dev-${current_slug}.sock\""
 }
 
 while [[ $# -gt 0 ]]; do
@@ -179,7 +179,7 @@ if [[ -n "$TAG" ]]; then
     APP_NAME="vmux DEV ${TAG}"
   fi
   if [[ "$BUNDLE_SET" -eq 0 ]]; then
-    BUNDLE_ID="com.cmuxterm.app.debug.${TAG_ID}"
+    BUNDLE_ID="com.vmuxterm.app.debug.${TAG_ID}"
   fi
   if [[ "$DERIVED_SET" -eq 0 ]]; then
     DERIVED_DATA="$(tagged_derived_data_path "$TAG_SLUG")"
@@ -188,7 +188,7 @@ fi
 
 XCODEBUILD_ARGS=(
   -project GhosttyTabs.xcodeproj
-  -scheme cmux
+  -scheme vmux
   -configuration Debug
   -destination 'platform=macOS'
 )
@@ -204,7 +204,7 @@ if [[ -z "$TAG" ]]; then
 fi
 XCODEBUILD_ARGS+=(build)
 
-XCODE_LOG="/tmp/cmux-xcodebuild-${TAG_SLUG}.log"
+XCODE_LOG="/tmp/vmux-xcodebuild-${TAG_SLUG}.log"
 xcodebuild "${XCODEBUILD_ARGS[@]}" 2>&1 | tee "$XCODE_LOG" | grep -E '(warning:|error:|fatal:|BUILD FAILED|BUILD SUCCEEDED|\*\* BUILD)' || true
 XCODE_EXIT="${PIPESTATUS[0]}"
 echo "Full build log: $XCODE_LOG"
@@ -254,7 +254,7 @@ if [[ -z "${APP_PATH}" || ! -d "${APP_PATH}" ]]; then
 fi
 
 if [[ -n "${TAG_SLUG:-}" ]]; then
-  TMP_COMPAT_DERIVED_LINK="/tmp/cmux-${TAG_SLUG}"
+  TMP_COMPAT_DERIVED_LINK="/tmp/vmux-${TAG_SLUG}"
   if [[ "$DERIVED_DATA" != "$TMP_COMPAT_DERIVED_LINK" ]]; then
     ABS_DERIVED_DATA="$(cd "$DERIVED_DATA" && pwd)"
     rm -rf "$TMP_COMPAT_DERIVED_LINK"
@@ -275,27 +275,27 @@ if [[ -n "$TAG" && "$APP_NAME" != "$SEARCH_APP_NAME" ]]; then
     /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $BUNDLE_ID" "$INFO_PLIST" 2>/dev/null \
       || /usr/libexec/PlistBuddy -c "Add :CFBundleIdentifier string $BUNDLE_ID" "$INFO_PLIST"
     if [[ -n "${TAG_SLUG:-}" ]]; then
-      APP_SUPPORT_DIR="$HOME/Library/Application Support/cmux"
-      CMUXD_SOCKET="${APP_SUPPORT_DIR}/cmuxd-dev-${TAG_SLUG}.sock"
-      CMUX_SOCKET="/tmp/cmux-debug-${TAG_SLUG}.sock"
-      CMUX_DEBUG_LOG="/tmp/cmux-debug-${TAG_SLUG}.log"
-      write_last_socket_path "$CMUX_SOCKET"
-      echo "$CMUX_DEBUG_LOG" > /tmp/cmux-last-debug-log-path || true
+      APP_SUPPORT_DIR="$HOME/Library/Application Support/vmux"
+      VMUXD_SOCKET="${APP_SUPPORT_DIR}/vmuxd-dev-${TAG_SLUG}.sock"
+      VMUX_SOCKET="/tmp/vmux-debug-${TAG_SLUG}.sock"
+      VMUX_DEBUG_LOG="/tmp/vmux-debug-${TAG_SLUG}.log"
+      write_last_socket_path "$VMUX_SOCKET"
+      echo "$VMUX_DEBUG_LOG" > /tmp/vmux-last-debug-log-path || true
       /usr/libexec/PlistBuddy -c "Add :LSEnvironment dict" "$INFO_PLIST" 2>/dev/null || true
-      /usr/libexec/PlistBuddy -c "Set :LSEnvironment:CMUXD_UNIX_PATH \"${CMUXD_SOCKET}\"" "$INFO_PLIST" 2>/dev/null \
-        || /usr/libexec/PlistBuddy -c "Add :LSEnvironment:CMUXD_UNIX_PATH string \"${CMUXD_SOCKET}\"" "$INFO_PLIST"
-      /usr/libexec/PlistBuddy -c "Set :LSEnvironment:CMUX_SOCKET_PATH \"${CMUX_SOCKET}\"" "$INFO_PLIST" 2>/dev/null \
-        || /usr/libexec/PlistBuddy -c "Add :LSEnvironment:CMUX_SOCKET_PATH string \"${CMUX_SOCKET}\"" "$INFO_PLIST"
-      /usr/libexec/PlistBuddy -c "Set :LSEnvironment:CMUX_DEBUG_LOG \"${CMUX_DEBUG_LOG}\"" "$INFO_PLIST" 2>/dev/null \
-        || /usr/libexec/PlistBuddy -c "Add :LSEnvironment:CMUX_DEBUG_LOG string \"${CMUX_DEBUG_LOG}\"" "$INFO_PLIST"
-      if [[ -S "$CMUXD_SOCKET" ]]; then
-        for PID in $(lsof -t "$CMUXD_SOCKET" 2>/dev/null); do
+      /usr/libexec/PlistBuddy -c "Set :LSEnvironment:VMUXD_UNIX_PATH \"${VMUXD_SOCKET}\"" "$INFO_PLIST" 2>/dev/null \
+        || /usr/libexec/PlistBuddy -c "Add :LSEnvironment:VMUXD_UNIX_PATH string \"${VMUXD_SOCKET}\"" "$INFO_PLIST"
+      /usr/libexec/PlistBuddy -c "Set :LSEnvironment:VMUX_SOCKET_PATH \"${VMUX_SOCKET}\"" "$INFO_PLIST" 2>/dev/null \
+        || /usr/libexec/PlistBuddy -c "Add :LSEnvironment:VMUX_SOCKET_PATH string \"${VMUX_SOCKET}\"" "$INFO_PLIST"
+      /usr/libexec/PlistBuddy -c "Set :LSEnvironment:VMUX_DEBUG_LOG \"${VMUX_DEBUG_LOG}\"" "$INFO_PLIST" 2>/dev/null \
+        || /usr/libexec/PlistBuddy -c "Add :LSEnvironment:VMUX_DEBUG_LOG string \"${VMUX_DEBUG_LOG}\"" "$INFO_PLIST"
+      if [[ -S "$VMUXD_SOCKET" ]]; then
+        for PID in $(lsof -t "$VMUXD_SOCKET" 2>/dev/null); do
           kill "$PID" 2>/dev/null || true
         done
-        rm -f "$CMUXD_SOCKET"
+        rm -f "$VMUXD_SOCKET"
       fi
-      if [[ -S "$CMUX_SOCKET" ]]; then
-        rm -f "$CMUX_SOCKET"
+      if [[ -S "$VMUX_SOCKET" ]]; then
+        rm -f "$VMUX_SOCKET"
       fi
     fi
     /usr/bin/codesign --force --sign - --timestamp=none --generate-entitlement-der "$TAG_APP_PATH" >/dev/null 2>&1 || true
@@ -314,19 +314,19 @@ else
   pkill -f "${APP_NAME}.app/Contents/MacOS/${BASE_APP_NAME}" || true
 fi
 sleep 0.3
-CMUXD_SRC="$PWD/cmuxd/zig-out/bin/vmuxd"
+VMUXD_SRC="$PWD/vmuxd/zig-out/bin/vmuxd"
 GHOSTTY_HELPER_SRC="$PWD/ghostty/zig-out/bin/ghostty"
-if [[ -d "$PWD/cmuxd" ]]; then
-  (cd "$PWD/cmuxd" && zig build -Doptimize=ReleaseFast)
+if [[ -d "$PWD/vmuxd" ]]; then
+  (cd "$PWD/vmuxd" && zig build -Doptimize=ReleaseFast)
 fi
 if [[ -d "$PWD/ghostty" ]]; then
-  (cd "$PWD/ghostty" && zig build cli-helper -Dapp-runtime=none -Demit-macos-app=false -Demit-xcframework=false -Doptimize=ReleaseFast)
+  (cd "$PWD/ghostty" && zig build cli-helper -Dapp-runtime=none -Demit-macos-app=false -Demit-xcframework=false -Doptimize=ReleaseFast -Dsentry=false)
 fi
-if [[ -x "$CMUXD_SRC" ]]; then
+if [[ -x "$VMUXD_SRC" ]]; then
   BIN_DIR="$APP_PATH/Contents/Resources/bin"
   mkdir -p "$BIN_DIR"
-  cp "$CMUXD_SRC" "$BIN_DIR/cmuxd"
-  chmod +x "$BIN_DIR/cmuxd"
+  cp "$VMUXD_SRC" "$BIN_DIR/vmuxd"
+  chmod +x "$BIN_DIR/vmuxd"
 fi
 if [[ -x "$GHOSTTY_HELPER_SRC" ]]; then
   BIN_DIR="$APP_PATH/Contents/Resources/bin"
@@ -336,39 +336,39 @@ if [[ -x "$GHOSTTY_HELPER_SRC" ]]; then
 fi
 CLI_PATH="$APP_PATH/Contents/Resources/bin/vmux"
 if [[ -x "$CLI_PATH" ]]; then
-  echo "$CLI_PATH" > /tmp/cmux-last-cli-path || true
+  echo "$CLI_PATH" > /tmp/vmux-last-cli-path || true
 fi
-# Avoid inheriting cmux/ghostty environment variables from the terminal that
-# runs this script (often inside another cmux instance), which can cause
+# Avoid inheriting vmux/ghostty environment variables from the terminal that
+# runs this script (often inside another vmux instance), which can cause
 # socket and resource-path conflicts.
 OPEN_CLEAN_ENV=(
   env
-  -u CMUX_SOCKET_PATH
-  -u CMUX_TAB_ID
-  -u CMUX_PANEL_ID
-  -u CMUXD_UNIX_PATH
-  -u CMUX_TAG
-  -u CMUX_DEBUG_LOG
-  -u CMUX_BUNDLE_ID
-  -u CMUX_SHELL_INTEGRATION
+  -u VMUX_SOCKET_PATH
+  -u VMUX_TAB_ID
+  -u VMUX_PANEL_ID
+  -u VMUXD_UNIX_PATH
+  -u VMUX_TAG
+  -u VMUX_DEBUG_LOG
+  -u VMUX_BUNDLE_ID
+  -u VMUX_SHELL_INTEGRATION
   -u GHOSTTY_BIN_DIR
   -u GHOSTTY_RESOURCES_DIR
   -u GHOSTTY_SHELL_FEATURES
   # Dev shells (including CI/Codex) often force-disable paging by exporting these.
-  # Don't leak that into cmux, otherwise `git diff` won't page even with PAGER=less.
+  # Don't leak that into vmux, otherwise `git diff` won't page even with PAGER=less.
   -u GIT_PAGER
   -u GH_PAGER
   -u TERMINFO
   -u XDG_DATA_DIRS
 )
 
-if [[ -n "${TAG_SLUG:-}" && -n "${CMUX_SOCKET:-}" ]]; then
-  # Ensure tag-specific socket paths win even if the caller has CMUX_* overrides.
-  "${OPEN_CLEAN_ENV[@]}" CMUX_TAG="$TAG_SLUG" CMUX_SOCKET_PATH="$CMUX_SOCKET" CMUXD_UNIX_PATH="$CMUXD_SOCKET" CMUX_DEBUG_LOG="$CMUX_DEBUG_LOG" open -g "$APP_PATH"
+if [[ -n "${TAG_SLUG:-}" && -n "${VMUX_SOCKET:-}" ]]; then
+  # Ensure tag-specific socket paths win even if the caller has VMUX_* overrides.
+  "${OPEN_CLEAN_ENV[@]}" VMUX_TAG="$TAG_SLUG" VMUX_SOCKET_PATH="$VMUX_SOCKET" VMUXD_UNIX_PATH="$VMUXD_SOCKET" VMUX_DEBUG_LOG="$VMUX_DEBUG_LOG" open -g "$APP_PATH"
 elif [[ -n "${TAG_SLUG:-}" ]]; then
-  "${OPEN_CLEAN_ENV[@]}" CMUX_TAG="$TAG_SLUG" CMUX_DEBUG_LOG="$CMUX_DEBUG_LOG" open -g "$APP_PATH"
+  "${OPEN_CLEAN_ENV[@]}" VMUX_TAG="$TAG_SLUG" VMUX_DEBUG_LOG="$VMUX_DEBUG_LOG" open -g "$APP_PATH"
 else
-  echo "/tmp/cmux-debug.log" > /tmp/cmux-last-debug-log-path || true
+  echo "/tmp/vmux-debug.log" > /tmp/vmux-last-debug-log-path || true
   "${OPEN_CLEAN_ENV[@]}" open -g "$APP_PATH"
 fi
 

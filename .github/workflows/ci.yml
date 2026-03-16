@@ -25,12 +25,6 @@ jobs:
       - name: Validate cmux scheme test configuration
         run: ./tests/test_ci_scheme_testaction_debug.sh
 
-      - name: Validate GhosttyKit checksum verification
-        run: ./tests/test_ci_ghosttykit_checksum_verification.sh
-
-      - name: Validate current GhosttyKit checksum pin
-        run: ./tests/test_ci_ghosttykit_checksum_present.sh
-
   web-typecheck:
     runs-on: ubuntu-latest
     defaults:
@@ -75,15 +69,15 @@ jobs:
           xcodebuild -version
           xcrun --sdk macosx --show-sdk-path
 
-      - name: Download pre-built GhosttyKit.xcframework
-        run: |
-          ./scripts/download-prebuilt-ghosttykit.sh
-
       - name: Install zig
         run: |
           if ! command -v zig >/dev/null 2>&1; then
             brew install zig
           fi
+
+      - name: Build GhosttyKit.xcframework
+        run: |
+          ./scripts/setup.sh
 
       - name: Clean DerivedData
         run: |
@@ -211,15 +205,15 @@ jobs:
           export DEVELOPER_DIR="$XCODE_DIR"
           xcodebuild -version
 
-      - name: Download pre-built GhosttyKit.xcframework
-        run: |
-          ./scripts/download-prebuilt-ghosttykit.sh
-
       - name: Install zig
         run: |
           if ! command -v zig >/dev/null 2>&1; then
             brew install zig
           fi
+
+      - name: Build GhosttyKit.xcframework
+        run: |
+          ./scripts/setup.sh
 
       - name: Clean DerivedData
         run: rm -rf ~/Library/Developer/Xcode/DerivedData/GhosttyTabs-*
