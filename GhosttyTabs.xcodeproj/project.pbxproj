@@ -7,6 +7,14 @@
 	objects = {
 
 		/* Begin PBXBuildFile section */
+		SK000001 /* TabManager+SocketProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = SK000011 /* TabManager+SocketProtocol.swift */; };
+		SK000002 /* Workspace+SocketProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = SK000012 /* Workspace+SocketProtocol.swift */; };
+		SV000001 /* TypingPerformance.swift in Sources */ = {isa = PBXBuildFile; fileRef = SV000011 /* TypingPerformance.swift */; };
+		SV000002 /* VSCodeIntegration.swift in Sources */ = {isa = PBXBuildFile; fileRef = SV000012 /* VSCodeIntegration.swift */; };
+		SV000003 /* CLIInstallService.swift in Sources */ = {isa = PBXBuildFile; fileRef = SV000013 /* CLIInstallService.swift */; };
+		SV000004 /* WorkspaceShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = SV000014 /* WorkspaceShortcuts.swift */; };
+		SV000005 /* InputRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = SV000015 /* InputRouting.swift */; };
+		SV000006 /* MenuBarService.swift in Sources */ = {isa = PBXBuildFile; fileRef = SV000016 /* MenuBarService.swift */; };
 		UI000001 /* WindowEffects.swift in Sources */ = {isa = PBXBuildFile; fileRef = UI000011 /* WindowEffects.swift */; };
 		UI000002 /* CommandPaletteSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = UI000012 /* CommandPaletteSearch.swift */; };
 		UI000003 /* SidebarDragDrop.swift in Sources */ = {isa = PBXBuildFile; fileRef = UI000013 /* SidebarDragDrop.swift */; };
@@ -154,6 +162,12 @@
 /* End PBXContainerItemProxy section */
 
 		/* Begin PBXFileReference section */
+		SV000011 /* TypingPerformance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TypingPerformance.swift; sourceTree = "<group>"; };
+		SV000012 /* VSCodeIntegration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VSCodeIntegration.swift; sourceTree = "<group>"; };
+		SV000013 /* CLIInstallService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CLIInstallService.swift; sourceTree = "<group>"; };
+		SV000014 /* WorkspaceShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceShortcuts.swift; sourceTree = "<group>"; };
+		SV000015 /* InputRouting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputRouting.swift; sourceTree = "<group>"; };
+		SV000016 /* MenuBarService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarService.swift; sourceTree = "<group>"; };
 			A5001000 /* vmux.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = vmux.app; sourceTree = BUILT_PRODUCTS_DIR; };
 			F1000002A1B2C3D4E5F60718 /* vmuxTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = vmuxTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 			7E7E6EF344A568AC7FEE3715 /* vmuxUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = vmuxUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -416,8 +430,22 @@
 				A5001241 /* WindowDecorationsController.swift */,
 				A5001222 /* WindowAccessor.swift */,
 				/* SessionPersistence.swift moved to VmuxSession package */
+				SV000020 /* Services */,
 			);
 			path = Sources;
+			sourceTree = "<group>";
+		};
+		SV000020 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				SV000011 /* TypingPerformance.swift */,
+				SV000012 /* VSCodeIntegration.swift */,
+				SV000013 /* CLIInstallService.swift */,
+				SV000014 /* WorkspaceShortcuts.swift */,
+				SV000015 /* InputRouting.swift */,
+				SV000016 /* MenuBarService.swift */,
+			);
+			path = Services;
 			sourceTree = "<group>";
 		};
 		B9000003A1B2C3D4E5F60719 /* CLI */ = {
@@ -696,6 +724,12 @@
 				A5001240 /* WindowDecorationsController.swift in Sources */,
 				A500120C /* WindowAccessor.swift in Sources */,
 				/* SessionPersistence.swift moved to VmuxSession package */
+				SV000001 /* TypingPerformance.swift in Sources */,
+				SV000002 /* VSCodeIntegration.swift in Sources */,
+				SV000003 /* CLIInstallService.swift in Sources */,
+				SV000004 /* WorkspaceShortcuts.swift in Sources */,
+				SV000005 /* InputRouting.swift in Sources */,
+				SV000006 /* MenuBarService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
