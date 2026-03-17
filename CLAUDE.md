@@ -200,6 +200,10 @@ git add ghostty
 git commit -m "Update ghostty submodule"
 ```
 
+## Known limitations
+
+- **Equalize splits with many panes (6+):** The equalize splits shortcut (Cmd+Ctrl+=) uses a two-pass approach to handle nested NSSplitView minimum size constraints. With deeply nested layouts (6+ panes), the first pass may not fully converge and the second async pass refines positions. In extreme cases (10+ panes in complex arrangements), a second press may be needed. This is an NSSplitView constraint propagation limitation, not a calculation bug — the model positions are always correct.
+
 ## Release
 
 Use the `/release` command to prepare a new release. This will:

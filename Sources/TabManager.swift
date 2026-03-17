@@ -2938,11 +2938,29 @@ class TabManager: ObservableObject {
     func equalizeSplits(tabId: UUID) -> Bool {
         guard let tab = tabs.first(where: { $0.id == tabId }) else { return false }
         let controller = tab.bonsplitController
-        let leafCount = equalizeSplits(in: controller.treeSnapshot(), controller: controller)
-        if leafCount > 1 {
-            controller.notifyGeometryChange()
+        #if DEBUG
+        dlog("equalize.begin tabId=\(String(tabId.uuidString.prefix(5)))")
+        #endif
+        // Pass 1: set all positions. performBatchUpdate suppresses interleaved SwiftUI
+        // syncs and triggers a single re-evaluation at the end.
+        var leafCount = 0
+        controller.performBatchUpdate {
+            leafCount = equalizeSplits(in: controller.treeSnapshot(), controller: controller)
         }
-        return leafCount > 1
+        guard leafCount > 1 else { return false }
+        // Pass 2: after layout settles, re-apply. Nested NSSplitViews have minimum size
+        // constraints that prevent exact positioning on the first pass. The second pass
+        // refines positions now that all constraints have adjusted.
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            controller.performBatchUpdate {
+                self.equalizeSplits(in: controller.treeSnapshot(), controller: controller)
+            }
+        }
+        #if DEBUG
+        dlog("equalize.end tabId=\(String(tabId.uuidString.prefix(5))) leafCount=\(leafCount)")
+        #endif
+        return true
     }
 
     /// Toggle zoom on a panel.
@@ -2971,6 +2989,9 @@ class TabManager: ObservableObject {
             let secondCount = equalizeSplits(in: splitNode.second, controller: controller)
             let position = CGFloat(firstCount) / CGFloat(firstCount + secondCount)
             if let splitId = UUID(uuidString: splitNode.id) {
+                #if DEBUG
+                dlog("equalize.set split=\(String(splitNode.id.prefix(5))) first=\(firstCount) second=\(secondCount) pos=\(String(format: "%.4f", position)) orient=\(splitNode.orientation)")
+                #endif
                 controller.setDividerPosition(position, forSplit: splitId, notify: false)
             }
             return firstCount + secondCount

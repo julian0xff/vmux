@@ -1033,6 +1033,10 @@ class GhosttyApp {
             }
         }
         runtimeConfig.action_cb = { app, target, action in
+            #if DEBUG
+            dlog("ghostty.action_cb tag=\(action.tag.rawValue) target=\(target.tag.rawValue)")
+            DebugEventLog.shared.dump()
+            #endif
             return GhosttyApp.shared.handleAction(target: target, action: action)
         }
         runtimeConfig.read_clipboard_cb = { userdata, location, state in
@@ -1896,6 +1900,9 @@ class GhosttyApp {
     }
 
     private func handleAction(target: ghostty_target_s, action: ghostty_action_s) -> Bool {
+        #if DEBUG
+        dlog("handleAction ENTRY action.tag=\(action.tag.rawValue) target.tag=\(target.tag.rawValue)")
+        #endif
         if target.tag != GHOSTTY_TARGET_SURFACE {
             if action.tag == GHOSTTY_ACTION_RELOAD_CONFIG ||
                 action.tag == GHOSTTY_ACTION_CONFIG_CHANGE ||
@@ -1994,6 +2001,10 @@ class GhosttyApp {
                 return true
             }
 
+            #if DEBUG
+            dlog("handleAction BAIL target!=SURFACE action.tag=\(action.tag.rawValue) target.tag=\(target.tag.rawValue)")
+            DebugEventLog.shared.dump()
+            #endif
             return false
         }
         let callbackContext = Self.callbackContext(from: ghostty_surface_userdata(target.target.surface))
@@ -2036,7 +2047,16 @@ class GhosttyApp {
             return true
         }
 
-        guard let surfaceView = callbackContext?.surfaceView else { return false }
+        guard let surfaceView = callbackContext?.surfaceView else {
+            #if DEBUG
+            dlog("handleAction BAIL surfaceView=nil action.tag=\(action.tag.rawValue)")
+            DebugEventLog.shared.dump()
+            #endif
+            return false
+        }
+        #if DEBUG
+        dlog("handleAction SURFACE action.tag=\(action.tag.rawValue) tabId=\(surfaceView.tabId?.uuidString.prefix(8) ?? "nil") surfaceId=\(surfaceView.terminalSurface?.id.uuidString.prefix(8) ?? "nil")")
+        #endif
         if action.tag == GHOSTTY_ACTION_RELOAD_CONFIG ||
             action.tag == GHOSTTY_ACTION_CONFIG_CHANGE ||
             action.tag == GHOSTTY_ACTION_COLOR_CHANGE {
@@ -2091,11 +2111,28 @@ class GhosttyApp {
                 )
             }
         case GHOSTTY_ACTION_EQUALIZE_SPLITS:
+            #if DEBUG
+            dlog("equalize_splits REACHED tabId=\(surfaceView.tabId?.uuidString.prefix(8) ?? "nil")")
+            DebugEventLog.shared.dump()
+            #endif
             guard let tabId = surfaceView.tabId else {
+                #if DEBUG
+                dlog("equalize_splits BAIL tabId=nil")
+                DebugEventLog.shared.dump()
+                #endif
                 return false
             }
             return performOnMain {
-                guard let tabManager = AppDelegate.shared?.tabManager else { return false }
+                guard let tabManager = AppDelegate.shared?.tabManager else {
+                    #if DEBUG
+                    dlog("equalize_splits BAIL tabManager=nil")
+                    DebugEventLog.shared.dump()
+                    #endif
+                    return false
+                }
+                #if DEBUG
+                dlog("equalize_splits CALLING tabManager.equalizeSplits tabId=\(tabId.uuidString.prefix(8))")
+                #endif
                 return tabManager.equalizeSplits(tabId: tabId)
             }
         case GHOSTTY_ACTION_TOGGLE_SPLIT_ZOOM:
@@ -2410,6 +2447,9 @@ class GhosttyApp {
                 }
             }
         default:
+            #if DEBUG
+            dlog("handleAction UNHANDLED action.tag=\(action.tag.rawValue)")
+            #endif
             return false
         }
     }
