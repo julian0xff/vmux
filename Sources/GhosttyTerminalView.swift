@@ -1,7 +1,6 @@
 import Foundation
 import SwiftUI
 import AppKit
-import Metal
 import QuartzCore
 import Combine
 import Darwin
