@@ -1,241 +1,195 @@
-# vmux agent notes
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Initial setup
 
-Run the setup script to initialize submodules and build GhosttyKit:
-
 ```bash
-./scripts/setup.sh
+./scripts/setup.sh    # initialize submodules and build GhosttyKit
 ```
+
+## Architecture
+
+vmux is a macOS terminal multiplexer built with Swift/SwiftUI, embedding Ghostty (Zig-compiled) as the terminal engine via GhosttyKit.xcframework.
+
+### Package structure
+
+The app is split into local Swift packages under `Packages/` plus the main app target:
+
+```
+GhosttyKit.xcframework (Zig binary, built from ghostty submodule)
+         │
+     VmuxCore           ← Layer 0: protocols, types, settings (no app deps)
+         │
+  ┌──────┼──────────┬──────────┬──────────┐
+  │      │          │          │          │
+VmuxSession  VmuxSocket  VmuxTerminal  VmuxUpdate
+(persistence) (IPC types) (engine bridge) (Sparkle)
+  │      │          │          │          │
+  └──────┴──────────┴──────────┴──────────┘
+                    │
+           GhosttyTabs (app target)
+      imports all packages + Bonsplit + MarkdownUI
+```
+
+**VmuxCore** — Panel protocol, Backport utilities, SidebarFolderModel/Store, SidebarSelection, KeyboardShortcutSettings, GhosttyConfig, TerminalEngineProtocol, GhosttyNotifications, FocusLogStore
+
+**VmuxSession** — SessionPersistence (all Codable snapshot types). Depends on VmuxCore + Bonsplit.
+
+**VmuxSocket** — SocketControlSettings, SocketTabManagerProtocol/SocketWorkspaceProtocol (22 methods, 8 properties). Depends on VmuxCore.
+
+**VmuxTerminal** — TerminalEngine singleton accessor (protocol bridge to GhosttyApp). Depends on VmuxCore.
+
+**VmuxUpdate** — Full Sparkle update flow (11 files: controller, delegate, driver, view model, UI). Depends on VmuxCore + Sparkle.
+
+### App target organization
+
+```
+Sources/
+├── vmuxApp.swift              # @main entry, @StateObject ownership, settings UI
+├── AppDelegate.swift          # Lifecycle, menus, keyboard routing, window mgmt
+├── ContentView.swift          # Main window: sidebar, command palette, drag-drop
+├── TerminalController.swift   # Unix socket server, all V1/V2 command handlers
+├── GhosttyTerminalView.swift  # Ghostty C API: GhosttyApp, TerminalSurface, NSView
+├── TabManager.swift           # Workspace collection, selection, navigation
+├── Workspace.swift            # Per-workspace state, panels, BonsplitDelegate
+├── Panels/                    # Panel protocol impls (Terminal, Browser, Markdown)
+├── Services/                  # Extracted from AppDelegate: InputRouting, MenuBar, etc.
+├── UI/                        # Extracted from ContentView: CommandPalette, DragDrop, etc.
+├── Find/                      # In-terminal and in-browser search overlays
+└── Update/                    # UpdateTitlebarAccessory (kept in app target, cross-cutting)
+```
+
+### Key singletons and state flow
+
+- **GhosttyApp.shared** — Ghostty C runtime (`ghostty_app_t`). Accessed via `TerminalEngine.shared?` (protocol) from packages.
+- **TerminalController.shared** — Unix socket server. Holds weak `TabManager` ref, mutates Workspace from socket commands.
+- **AppDelegate.shared** — Multi-window management. `mainWindowContexts` maps windows to their TabManager/SidebarState.
+- **TabManager** — One per window. Owns `[Workspace]` array. Created as `@StateObject` in vmuxApp, injected via `@EnvironmentObject`.
+- **Workspace** — One per sidebar tab. Owns `BonsplitController` (split layout) and `[UUID: any Panel]`.
+
+### Submodules
+
+- **ghostty** (`manaflow-ai/ghostty` fork) — Ghostty terminal engine source, builds GhosttyKit.xcframework
+- **vendor/bonsplit** (`julian0xff/bonsplit`) — Split-pane tab bar layout engine (`@Observable`)
+- **homebrew-vmux** (`manaflow-ai/homebrew-vmux`) — Homebrew cask (used by CI release workflow)
+
+### Portal architecture
+
+Terminal (`TerminalWindowPortal.swift`) and browser (`BrowserWindowPortal.swift`) NSViews can't be hosted directly in SwiftUI. "Portal" files use associated-object tricks to attach NSView trees to NSWindow slots, bypassing the normal view hierarchy. These are the most architecturally unusual part of the codebase.
 
 ## Local dev
 
-After making code changes, always run the reload script with a tag to launch the Debug app:
+Always use tagged builds. Never run bare `xcodebuild` or `open` an untagged `vmux DEV.app`.
 
 ```bash
-./scripts/reload.sh --tag fix-zsh-autosuggestions
+./scripts/reload.sh --tag <tag>     # kill + build + launch Debug app
+./scripts/reloadp.sh                # kill + launch Release app
+./scripts/reloads.sh                # kill + launch as "vmux STAGING"
+./scripts/reload2.sh --tag <tag>    # reload both Debug + Release
 ```
 
-When reporting a tagged reload result in chat, use the format for your agent type:
-
-**Claude Code** (markdown link with correct derived-data path, cmd+clickable):
-```markdown
-=======================================================
-[vmux DEV <tag-name>.app](file:///Users/lawrencechen/Library/Developer/Xcode/DerivedData/vmux-<tag-name>/Build/Products/Debug/vmux%20DEV%20<tag-name>.app)
-=======================================================
-```
-
-**Codex** (plain text format):
-```
-=======================================================
-[<tag-name>: file:///Users/lawrencechen/Library/Developer/Xcode/DerivedData/vmux-<tag-name>/Build/Products/Debug/vmux%20DEV%20<tag-name>.app](file:///Users/lawrencechen/Library/Developer/Xcode/DerivedData/vmux-<tag-name>/Build/Products/Debug/vmux%20DEV%20<tag-name>.app)
-=======================================================
-```
-
-Never use `/tmp/vmux-<tag>/...` app links in chat output. If the expected DerivedData path is missing, resolve the real `.app` path and report that `file://` URL.
-
-After making code changes, always use `reload.sh --tag` to build and launch. **Never run bare `xcodebuild` or `open` an untagged `vmux DEV.app`.** Untagged builds share the default debug socket and bundle ID with other agents, causing conflicts and stealing focus.
-
+Build-only (no launch):
 ```bash
-./scripts/reload.sh --tag <your-branch-slug>
+xcodebuild -project GhosttyTabs.xcodeproj -scheme vmux -configuration Debug -destination 'platform=macOS' -derivedDataPath /tmp/vmux-<tag> build
 ```
 
-If you only need to verify the build compiles (no launch), use a tagged derivedDataPath:
-
-```bash
-xcodebuild -project GhosttyTabs.xcodeproj -scheme vmux -configuration Debug -destination 'platform=macOS' -derivedDataPath /tmp/vmux-<your-tag> build
-```
-
-When rebuilding GhosttyKit.xcframework, always use Release optimizations:
-
+Rebuild GhosttyKit (Release optimizations required):
 ```bash
 cd ghostty && zig build -Demit-xcframework=true -Dxcframework-target=universal -Doptimize=ReleaseFast
 ```
 
-When rebuilding vmuxd for release/bundling, always use ReleaseFast:
-
-```bash
-cd vmuxd && zig build -Doptimize=ReleaseFast
+When reporting a tagged reload in chat, use a clickable file:// link:
+```markdown
+=======================================================
+[vmux DEV <tag>.app](file:///Users/iulian/Library/Developer/Xcode/DerivedData/vmux-<tag>/Build/Products/Debug/vmux%20DEV%20<tag>.app)
+=======================================================
 ```
-
-`reload` = kill and launch the Debug app only (tag required):
-
-```bash
-./scripts/reload.sh --tag <tag>
-```
-
-`reloadp` = kill and launch the Release app:
-
-```bash
-./scripts/reloadp.sh
-```
-
-`reloads` = kill and launch the Release app as "vmux STAGING" (isolated from production vmux):
-
-```bash
-./scripts/reloads.sh
-```
-
-`reload2` = reload both Debug and Release (tag required for Debug reload):
-
-```bash
-./scripts/reload2.sh --tag <tag>
-```
-
-For parallel/isolated builds (e.g., testing a feature alongside the main app), use `--tag` with a short descriptive name:
-
-```bash
-./scripts/reload.sh --tag fix-blur-effect
-```
-
-This creates an isolated app with its own name, bundle ID, socket, and derived data path so it runs side-by-side with the main app. Important: use a non-`/tmp` derived data path if you need xcframework resolution (the script handles this automatically).
-
-Before launching a new tagged run, clean up any older tags you started in this session (quit old tagged app + remove its `/tmp` socket/derived data).
 
 ## Debug event log
 
-All debug events (keys, mouse, focus, splits, tabs) go to a unified log in DEBUG builds:
+All debug events go to a unified log in DEBUG builds:
 
 ```bash
 tail -f "$(cat /tmp/vmux-last-debug-log-path 2>/dev/null || echo /tmp/vmux-debug.log)"
 ```
 
-- Untagged Debug app: `/tmp/vmux-debug.log`
-- Tagged Debug app (`./scripts/reload.sh --tag <tag>`): `/tmp/vmux-debug-<tag>.log`
-- `reload.sh` writes the current path to `/tmp/vmux-last-debug-log-path`
-
+- Tagged builds: `/tmp/vmux-debug-<tag>.log`
 - Implementation: `vendor/bonsplit/Sources/Bonsplit/Public/DebugEventLog.swift`
-- Free function `dlog("message")` — logs with timestamp and appends to file in real time
-- Entire file is `#if DEBUG`; all call sites must be wrapped in `#if DEBUG` / `#endif`
-- 500-entry ring buffer; `DebugEventLog.shared.dump()` writes full buffer to file
-- Key events logged in `AppDelegate.swift` (monitor, performKeyEquivalent)
-- Mouse/UI events logged inline in views (ContentView, BrowserPanelView, etc.)
-- Focus events: `focus.panel`, `focus.bonsplit`, `focus.firstResponder`, `focus.moveFocus`
-- Bonsplit events: `tab.select`, `tab.close`, `tab.dragStart`, `tab.drop`, `pane.focus`, `pane.drop`, `divider.dragStart`
-
-## Regression test commit policy
-
-When adding a regression test for a bug fix, use a two-commit structure so CI proves the test catches the bug:
-
-1. **Commit 1:** Add the failing test only (no fix). CI should go red.
-2. **Commit 2:** Add the fix. CI should go green.
-
-This makes it visible in the GitHub PR UI (Commits tab, check statuses) that the test genuinely fails without the fix.
+- Use `dlog("message")` — must be wrapped in `#if DEBUG` / `#endif`
+- `DebugEventLog.shared.dump()` flushes the ring buffer to file
 
 ## Pitfalls
 
-- **Custom UTTypes** for drag-and-drop must be declared in `Resources/Info.plist` under `UTExportedTypeDeclarations` (e.g. `com.splittabbar.tabtransfer`, `com.vmux.sidebar-tab-reorder`).
+- **Custom UTTypes** for drag-and-drop must be declared in `Resources/Info.plist` under `UTExportedTypeDeclarations`.
 - Do not add an app-level display link or manual `ghostty_surface_draw` loop; rely on Ghostty wakeups/renderer to avoid typing lag.
-- **Typing-latency-sensitive paths** (read carefully before touching these areas):
-  - `WindowTerminalHostView.hitTest()` in `TerminalWindowPortal.swift`: called on every event including keyboard. All divider/sidebar/drag routing is gated to pointer events only. Do not add work outside the `isPointerEvent` guard.
-  - `TabItemView` in `ContentView.swift`: uses `Equatable` conformance + `.equatable()` to skip body re-evaluation during typing. Do not add `@EnvironmentObject`, `@ObservedObject` (besides `tab`), or `@Binding` properties without updating the `==` function. Do not remove `.equatable()` from the ForEach call site. Do not read `tabManager` or `notificationStore` in the body; use the precomputed `let` parameters instead.
-  - `TerminalSurface.forceRefresh()` in `GhosttyTerminalView.swift`: called on every keystroke. Do not add allocations, file I/O, or formatting here.
-- **Terminal find layering contract:** `SurfaceSearchOverlay` must be mounted from `GhosttySurfaceScrollView` in `Sources/GhosttyTerminalView.swift` (AppKit portal layer), not from SwiftUI panel containers such as `Sources/Panels/TerminalPanelView.swift`. Portal-hosted terminal views can sit above SwiftUI during split/workspace churn.
-- **Submodule safety:** When modifying a submodule (ghostty, vendor/bonsplit, etc.), always push the submodule commit to its remote `main` branch BEFORE committing the updated pointer in the parent repo. Never commit on a detached HEAD or temporary branch — the commit will be orphaned and lost. Verify with: `cd <submodule> && git merge-base --is-ancestor HEAD origin/main`.
-- **All user-facing strings must be localized.** Use `String(localized: "key.name", defaultValue: "English text")` for every string shown in the UI (labels, buttons, menus, dialogs, tooltips, error messages). Keys go in `Resources/Localizable.xcstrings` with translations for all supported languages (currently English and Japanese). Never use bare string literals in SwiftUI `Text()`, `Button()`, alert titles, etc.
-
-## Test quality policy
-
-- Do not add tests that only verify source code text, method signatures, AST fragments, or grep-style patterns.
-- Do not add tests that read checked-in metadata or project files such as `Resources/Info.plist`, `project.pbxproj`, `.xcconfig`, or source files only to assert that a key, string, plist entry, or snippet exists.
-- Tests must verify observable runtime behavior through executable paths (unit/integration/e2e/CLI), not implementation shape.
-- For metadata changes, prefer verifying the built app bundle or the runtime behavior that depends on that metadata, not the checked-in source file.
-- If a behavior cannot be exercised end-to-end yet, add a small runtime seam or harness first, then test through that seam.
-- If no meaningful behavioral or artifact-level test is practical, skip the fake regression test and state that explicitly.
-
-## Socket command threading policy
-
-- Do not use `DispatchQueue.main.sync` for high-frequency socket telemetry commands (`report_*`, `ports_kick`, status/progress/log metadata updates).
-- For telemetry hot paths:
-  - Parse and validate arguments off-main.
-  - Dedupe/coalesce off-main first.
-  - Schedule minimal UI/model mutation with `DispatchQueue.main.async` only when needed.
-- Commands that directly manipulate AppKit/Ghostty UI state (focus/select/open/close/send key/input, list/current queries requiring exact synchronous snapshot) are allowed to run on main actor.
-- If adding a new socket command, default to off-main handling; require an explicit reason in code comments when main-thread execution is necessary.
-
-## Socket focus policy
-
-- Socket/CLI commands must not steal macOS app focus (no app activation/window raising side effects).
-- Only explicit focus-intent commands may mutate in-app focus/selection (`window.focus`, `workspace.select/next/previous/last`, `surface.focus`, `pane.focus/last`, browser focus commands, and v1 focus equivalents).
-- All non-focus commands should preserve current user focus context while still applying data/model changes.
+- **Typing-latency-sensitive paths:**
+  - `WindowTerminalHostView.hitTest()` in `TerminalWindowPortal.swift`: called on every event. All divider/sidebar/drag routing is gated to pointer events only.
+  - `TabItemView` in `ContentView.swift`: uses `Equatable` + `.equatable()` to skip body re-evaluation during typing. Do not add `@EnvironmentObject`, `@ObservedObject` (besides `tab`), or `@Binding` without updating `==`.
+  - `TerminalSurface.forceRefresh()` in `GhosttyTerminalView.swift`: called on every keystroke. No allocations, file I/O, or formatting.
+- **Terminal find layering:** `SurfaceSearchOverlay` must mount from `GhosttySurfaceScrollView` (AppKit portal layer), not SwiftUI panel containers.
+- **Submodule safety:** Always push submodule commits to remote `main` BEFORE committing the pointer in the parent repo. Never commit on detached HEAD. Verify: `cd <submodule> && git merge-base --is-ancestor HEAD origin/main`.
+- **All user-facing strings must be localized.** Use `String(localized: "key.name", defaultValue: "English text")`. Keys go in `Resources/Localizable.xcstrings`.
+- **GhosttyKit.xcframework cannot be a binary target in SPM packages** — it causes module conflicts with the same xcframework linked at the Xcode project level. Files referencing Ghostty C types must stay in the app target.
+- **Moving ObservableObject types across module boundaries can crash SwiftUI.** The VmuxBrowser extraction was reverted because moving `ObservableObject` classes to a separate package caused use-after-free in `@Observable` tracking during SwiftUI's environment modifier system.
 
 ## Testing policy
 
-**Never run tests locally.** All tests (E2E, UI, python socket tests) run via GitHub Actions or on the VM.
+**Never run tests locally.** All tests run via GitHub Actions or on the VM.
 
-- **E2E / UI tests:** trigger via `gh workflow run test-e2e.yml` (see vmuxterm-hq CLAUDE.md for details)
 - **Unit tests:** `xcodebuild -scheme vmux-unit` is safe (no app launch), but prefer CI
-- **Python socket tests (tests_v2/):** these connect to a running vmux instance's socket. Never launch an untagged `vmux DEV.app` to run them. If you must test locally, use a tagged build's socket (`/tmp/vmux-debug-<tag>.sock`) with `VMUX_SOCKET=/tmp/vmux-debug-<tag>.sock`
-- **Never `open` an untagged `vmux DEV.app`** from DerivedData. It conflicts with the user's running debug instance.
+- **E2E / UI tests:** trigger via `gh workflow run test-e2e.yml`
+- **Python socket tests (tests_v2/):** connect to a running vmux socket. Never launch untagged `vmux DEV.app`.
+
+## Test quality policy
+
+- Tests must verify observable runtime behavior, not source code text or AST patterns.
+- Do not add tests that grep source files or read project metadata.
+- If no meaningful behavioral test is practical, skip the fake test and state that explicitly.
+
+## Regression test commit policy
+
+Two-commit structure: (1) Add failing test only → CI goes red. (2) Add fix → CI goes green.
+
+## Socket command threading policy
+
+- Do not use `DispatchQueue.main.sync` for high-frequency telemetry commands (`report_*`, `ports_kick`, metadata updates).
+- Parse/validate off-main. Dedupe/coalesce off-main. Schedule minimal UI mutation with `.main.async`.
+- Commands that directly manipulate AppKit/Ghostty UI state may run on main actor.
+
+## Socket focus policy
+
+- Socket/CLI commands must not steal macOS app focus.
+- Only explicit focus-intent commands (`window.focus`, `workspace.select`, `surface.focus`, etc.) may mutate focus/selection.
 
 ## Ghostty submodule workflow
 
-Ghostty changes must be committed in the `ghostty` submodule and pushed to the `manaflow-ai/ghostty` fork.
-Keep `docs/ghostty-fork.md` up to date with any fork changes and conflict notes.
-
 ```bash
 cd ghostty
-git remote -v  # origin = upstream, manaflow = fork
 git checkout -b <branch>
-git add <files>
-git commit -m "..."
+# make changes, commit
 git push manaflow <branch>
-```
-
-To keep the fork up to date with upstream:
-
-```bash
-cd ghostty
-git fetch origin
-git checkout main
-git merge origin/main
-git push manaflow main
-```
-
-Then update the parent repo with the new submodule SHA:
-
-```bash
-cd ..
-git add ghostty
-git commit -m "Update ghostty submodule"
+cd .. && git add ghostty && git commit -m "Update ghostty submodule"
 ```
 
 ## Known limitations
 
-- **Equalize splits with many panes (6+):** The equalize splits shortcut (Cmd+Ctrl+=) uses a two-pass approach to handle nested NSSplitView minimum size constraints. With deeply nested layouts (6+ panes), the first pass may not fully converge and the second async pass refines positions. In extreme cases (10+ panes in complex arrangements), a second press may be needed. This is an NSSplitView constraint propagation limitation, not a calculation bug — the model positions are always correct.
+- **Equalize splits with many panes (6+):** Uses two-pass convergence for nested NSSplitView constraints. With 6+ panes, a second press may be needed. Model positions are always correct — this is an NSSplitView constraint propagation limitation.
+- **VmuxBrowser package extraction blocked:** Moving `ObservableObject` types from the app target to a separate SPM package causes SwiftUI observation crashes. Browser files remain in the app target. See `MODULARIZATION.md` for details.
 
 ## Release
 
-Use the `/release` command to prepare a new release. This will:
-1. Determine the new version (bumps minor by default)
-2. Gather commits since the last tag and update the changelog
-3. Update `CHANGELOG.md` (the docs changelog page at `web/app/docs/changelog/page.tsx` reads from it)
-4. Run `./scripts/bump-version.sh` to update both versions
-5. Commit, tag, and push
-
-Version bumping:
-
 ```bash
-./scripts/bump-version.sh          # bump minor (0.15.0 → 0.16.0)
-./scripts/bump-version.sh patch    # bump patch (0.15.0 → 0.15.1)
-./scripts/bump-version.sh major    # bump major (0.15.0 → 1.0.0)
+./scripts/bump-version.sh          # bump minor
+./scripts/bump-version.sh patch    # bump patch
 ./scripts/bump-version.sh 1.0.0    # set specific version
 ```
 
-This updates both `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` (build number). The build number is auto-incremented and is required for Sparkle auto-update to work.
-
-Manual release steps (if not using the command):
+Updates both `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` (build number, required for Sparkle).
 
 ```bash
 git tag vX.Y.Z
 git push origin vX.Y.Z
-gh run watch --repo manaflow-ai/vmux
 ```
 
-Notes:
-- Requires GitHub secrets: `APPLE_CERTIFICATE_BASE64`, `APPLE_CERTIFICATE_PASSWORD`,
-  `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`.
-- The release asset is `vmux-macos.dmg` attached to the tag.
-- README download button points to `releases/latest/download/vmux-macos.dmg`.
-- Versioning: bump the minor version for updates unless explicitly asked otherwise.
-- Changelog: update `CHANGELOG.md`; docs changelog is rendered from it.
+Release workflow builds, signs, notarizes, and uploads `vmux-macos.dmg`.
